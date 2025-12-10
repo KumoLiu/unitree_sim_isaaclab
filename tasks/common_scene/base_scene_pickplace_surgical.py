@@ -25,7 +25,7 @@ class SurgicalSceneCfg(InteractiveSceneCfg): # inherit from the interactive scen
     scene = AssetBaseCfg(
         prim_path="/World/envs/env_.*/Scene",
         spawn=UsdFileCfg(
-            usd_path=f"{usd_root}/lw_v2/scene_v2.usd",  # use simple room model
+            usd_path=f"{usd_root}/lw_v2/scene_v6.usd",  # use simple room model
         ),
     )
 
@@ -33,28 +33,30 @@ class SurgicalSceneCfg(InteractiveSceneCfg): # inherit from the interactive scen
         prim_path="/World/envs/env_.*/trocar_1",
         spawn=UsdFileCfg(
             usd_path=f"{usd_root}/lw_v2/Assets/Trocar002/Trocar002_wo.usd",
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(
-                rigid_body_enabled=True,
-                disable_gravity=False,
-                linear_damping=0.0,
-                angular_damping=0.0,
-                max_linear_velocity=1000.0,
-                max_angular_velocity=1000.0,
-                # low penetration recovery velocity, avoid sudden popping (critical!)
-                max_depenetration_velocity=1.0,
-            ),
+            # rigid_props=sim_utils.RigidBodyPropertiesCfg(
+            #     rigid_body_enabled=True,
+            #     disable_gravity=False,
+            #     linear_damping=0.0,
+            #     angular_damping=0.0,
+            #     max_linear_velocity=1000.0,
+            #     max_angular_velocity=1000.0,
+            #     # low penetration recovery velocity, avoid sudden popping (critical!)
+            #     max_depenetration_velocity=1.0,
+            # ),
             # collision properties: important for articulation interaction
             collision_props=sim_utils.CollisionPropertiesCfg(
                 collision_enabled=True,
-                contact_offset=0.01,       # increase to 0.01, important for articulation interaction
+                contact_offset=0.001,       # increase to 0.01, important for articulation interaction
                 rest_offset=-0.001,        # negative value allows slight overlap, improve stability
             ),
         ),
         init_state=RigidObjectCfg.InitialStateCfg(
             # pos=[-1.55953, 2.00288, 0.83483],
-            pos=[-1.56134, 2.00047, 0.83483],
             # rot=[0.17602, -0.70516, 0.18787, 0.66066]
+            pos=[-1.56134, 2.00047, 0.83483],
             rot=[0.09921, -0.72203, 0.1059, 0.67647]
+            # pos=[-1.56622, 2.01436, 0.83483],
+            # rot=[-0.18953, 0.70115, -0.2023, -0.65691]
         ),
     )
     

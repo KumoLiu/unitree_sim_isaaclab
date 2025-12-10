@@ -90,8 +90,14 @@ def update_task_stage(
     
     
     # Stage 2 -> 3: Check if placed in target zone
-    curr_x_min, curr_x_max = min(placement_x_min, placement_x_max), max(placement_x_min, placement_x_max)
-    curr_y_min, curr_y_max = min(placement_y_min, placement_y_max), max(placement_y_min, placement_y_max)
+    # Get environment origins to handle multi-env spatial offsets
+    env_origins = env.scene.env_origins  # shape: (num_envs, 3)
+    
+    # Adjust target zone relative to each environment's origin
+    curr_x_min = env_origins[:, 0] + min(placement_x_min, placement_x_max)  # (num_envs,)
+    curr_x_max = env_origins[:, 0] + max(placement_x_min, placement_x_max)
+    curr_y_min = env_origins[:, 1] + min(placement_y_min, placement_y_max)
+    curr_y_max = env_origins[:, 1] + max(placement_y_min, placement_y_max)
     
     in_zone_1 = (pos1[:, 0] >= curr_x_min) & (pos1[:, 0] <= curr_x_max) & \
                 (pos1[:, 1] >= curr_y_min) & (pos1[:, 1] <= curr_y_max) & \
@@ -239,9 +245,14 @@ def trocar_placement_reward(
     pos1 = obj1.data.root_pos_w
     pos2 = obj2.data.root_pos_w
     
-    # Handle potential min/max swap in config
-    curr_x_min, curr_x_max = min(x_min, x_max), max(x_min, x_max)
-    curr_y_min, curr_y_max = min(y_min, y_max), max(y_min, y_max)
+    # Get environment origins to handle multi-env spatial offsets
+    env_origins = env.scene.env_origins  # shape: (num_envs, 3)
+    
+    # Adjust target zone relative to each environment's origin
+    curr_x_min = env_origins[:, 0] + min(x_min, x_max)  # shape: (num_envs,)
+    curr_x_max = env_origins[:, 0] + max(x_min, x_max)
+    curr_y_min = env_origins[:, 1] + min(y_min, y_max)
+    curr_y_max = env_origins[:, 1] + max(y_min, y_max)
     
     # Check bounds for object 1
     in_x_1 = (pos1[:, 0] >= curr_x_min) & (pos1[:, 0] <= curr_x_max)
