@@ -5,7 +5,7 @@
 import gymnasium as gym
 import os
 
-from . import pickplace_surgical_g1_29dof_dex3_joint_env_cfg
+from . import pickplace_surgical_g1_29dof_dex3_joint_env_cfg, pickplace_surgical_g1_29dof_dex3_joint_env_cfg_v2
 
 
 gym.register(
@@ -17,3 +17,11 @@ gym.register(
     disable_env_checker=True,
 )
 
+gym.register(
+    id="Isaac-PickPlace-Surgical-G129-Dex3-Joint-Box",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": pickplace_surgical_g1_29dof_dex3_joint_env_cfg_v2.PickPlaceG129DEX3JointEnvCfg,
+    },
+    disable_env_checker=True,
+)

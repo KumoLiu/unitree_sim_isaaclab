@@ -20,6 +20,8 @@ import select
 import torch
 import gymnasium as gym
 from pathlib import Path
+import cv2
+import numpy as np
 
 # Isaac Lab AppLauncher
 from isaaclab.app import AppLauncher
@@ -171,7 +173,7 @@ def main():
 
     # parse environment configuration
     try:
-        env_cfg = parse_env_cfg(args_cli.task, device=args_cli.device, num_envs=3)
+        env_cfg = parse_env_cfg(args_cli.task, device=args_cli.device, num_envs=1)
         env_cfg.env_name = args_cli.task
     except Exception as e:
         print(f"Failed to parse environment configuration: {e}")
@@ -335,6 +337,16 @@ def main():
         print("\n")
         print("***  Running without GUI; rendering handled offscreen. ***")
         print("\n")
+    
+    # Print keyboard controls
+    print("=" * 60)
+    print("⌨️  Keyboard Controls:")
+    print("  [r] - Reset environment")
+    print("  [1] - Reset object")
+    print("  [2] - Reset all")
+    print("  [s] - Save front camera image to ./saved_images/")
+    print("=" * 60)
+    print()
     # reset environment
     if args_cli.modify_light:
         update_light(
@@ -478,6 +490,7 @@ def main():
                         print("[kb] reset env")
                         env.sim.reset()
                         env.reset()
+                        env_cfg.event_manager.trigger("reset_task_stage", env)
                     elif key == '1':
                         try:
                             print("[kb] reset_object_self event")
@@ -490,6 +503,45 @@ def main():
                             env_cfg.event_manager.trigger("reset_all_self", env)
                         except Exception as e:
                             print(f"[kb] reset_all_self failed: {e}")
+                    elif key == 's':
+                        try:
+                            print("[kb] saving front camera image...")
+                            
+                            # Get front camera
+                            if "front_camera" in env.scene.keys():
+                                front_camera = env.scene["front_camera"]
+                                rgb_image = front_camera.data.output["rgb"]
+                                
+                                # Get first environment's image
+                                img = rgb_image[0]
+                                
+                                # Convert to numpy
+                                if img.device.type != 'cpu':
+                                    img_np = img.cpu().numpy()
+                                else:
+                                    img_np = img.numpy()
+                                
+                                # Ensure uint8 format
+                                if img_np.dtype == np.float32 or img_np.dtype == np.float64:
+                                    img_np = (img_np * 255).astype(np.uint8)
+                                
+                                # Convert RGB to BGR for OpenCV
+                                img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+                                
+                                # Save image with timestamp
+                                save_dir = Path("./saved_images")
+                                save_dir.mkdir(exist_ok=True)
+                                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                                filename = save_dir / f"front_camera_{timestamp}_step{loop_count}.png"
+                                cv2.imwrite(str(filename), img_bgr)
+                                print(f"[kb] ✅ Saved front camera image to: {filename}")
+                                print(f"[kb]    Image shape: {img_bgr.shape}")
+                            else:
+                                print(f"[kb] ❌ front_camera not found in scene. Available: {list(env.scene.keys())}")
+                        except Exception as e:
+                            print(f"[kb] save camera image failed: {e}")
+                            import traceback
+                            traceback.print_exc()
                 except Exception as e:
                     # ignore keyboard errors to keep loop running
                     pass

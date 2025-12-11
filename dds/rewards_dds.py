@@ -35,7 +35,7 @@ class RewardsDDS(DDSObject):
         # setup the shared memory
         self.setup_shared_memory(
             input_shm_name="isaac_rewards",  # read rewards data for publishing
-            input_size=256,
+            input_size=4096,  # 4KB - increased for multi-env support (was 256)
             outputshm_flag=False
         )
 
