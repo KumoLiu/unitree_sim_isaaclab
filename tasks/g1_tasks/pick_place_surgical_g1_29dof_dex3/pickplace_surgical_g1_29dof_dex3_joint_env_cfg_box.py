@@ -47,6 +47,52 @@ class ObjectTableSceneCfg(SurgicalSceneCfg):
     left_wrist_camera = CameraPresets.left_dex3_wrist_camera()
     right_wrist_camera = CameraPresets.right_dex3_wrist_camera()
 
+joint_names = [
+'left_hip_pitch_joint', 
+'right_hip_pitch_joint', 
+'left_hip_roll_joint', 
+'right_hip_roll_joint', 
+'left_hip_yaw_joint', 
+'right_hip_yaw_joint', 
+'left_knee_joint', 
+'right_knee_joint', 
+'left_ankle_pitch_joint',
+'right_ankle_pitch_joint',
+'left_ankle_roll_joint',
+'right_ankle_roll_joint',
+'waist_yaw_joint',
+'waist_roll_joint',
+'waist_pitch_joint',
+"left_shoulder_pitch_joint",
+"left_shoulder_roll_joint",
+"left_shoulder_yaw_joint",
+"left_elbow_joint",
+"left_wrist_roll_joint",
+"left_wrist_pitch_joint",
+"left_wrist_yaw_joint",
+"right_shoulder_pitch_joint",
+"right_shoulder_roll_joint",
+"right_shoulder_yaw_joint",
+"right_elbow_joint",
+"right_wrist_roll_joint",
+"right_wrist_pitch_joint",
+"right_wrist_yaw_joint",
+"left_hand_thumb_0_joint",
+"left_hand_thumb_1_joint",
+"left_hand_thumb_2_joint",
+"left_hand_middle_0_joint",
+"left_hand_middle_1_joint",
+"left_hand_index_0_joint",
+"left_hand_index_1_joint",
+"right_hand_thumb_0_joint",
+"right_hand_thumb_1_joint",
+"right_hand_thumb_2_joint",
+"right_hand_middle_0_joint",
+"right_hand_middle_1_joint",
+"right_hand_index_0_joint",
+"right_hand_index_1_joint",
+]
+
 ##
 # MDP settings
 ##
@@ -54,7 +100,8 @@ class ObjectTableSceneCfg(SurgicalSceneCfg):
 class ActionsCfg:
     """defines the action configuration related to robot control, using direct joint angle control
     """
-    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=1.0, use_default_offset=True)
+    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=joint_names, scale=1.0, use_default_offset=True, preserve_order=True)
+    # joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=1.0, use_default_offset=True)
 
 
 
@@ -70,9 +117,9 @@ class ObservationsCfg:
         """
 
         # 1. robot joint state observation
-        robot_joint_state = ObsTerm(func=mdp.get_robot_boy_joint_states)
+        robot_joint_state = ObsTerm(func=mdp.get_robot_boy_joint_states, params={"enable_dds": False})
         # 2. gripper joint state observation 
-        robot_gipper_state = ObsTerm(func=mdp.get_robot_dex3_joint_states)
+        robot_gipper_state = ObsTerm(func=mdp.get_robot_dex3_joint_states, params={"enable_dds": False})
 
         # 3. camera image observation
         camera_image = ObsTerm(func=mdp.get_camera_image)
@@ -95,51 +142,84 @@ class TerminationsCfg:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
     
     # Task success termination (all stages completed)
-    # task_success = DoneTerm(
-    #     func=mdp.task_success_termination,
-    #     time_out=False,  # This is a success termination, not a failure
-    #     params={
-    #         "asset_cfg1": SceneEntityCfg("trocar_1"),
-    #         "asset_cfg2": SceneEntityCfg("trocar_2"),
-    #     }
-    # )
+    task_success = DoneTerm(
+        func=mdp.task_success_termination,
+        time_out=False,  # This is a success termination, not a failure
+        params={
+            "asset_cfg1": SceneEntityCfg("trocar_1"),
+            "asset_cfg2": SceneEntityCfg("trocar_2"),
+        }
+    )
+    # Object drop termination (optional - uncomment to use)
+    # If enabled, episodes will terminate when objects drop, and training framework will handle reset
+    object_drop = DoneTerm(
+        func=mdp.object_drop_termination,
+        time_out=True,  # Treat as timeout/failure
+        params={
+            "drop_height_threshold": 0.5,  # Objects below this Z height are considered dropped
+            "asset_cfg1": SceneEntityCfg("trocar_1"),
+            "asset_cfg2": SceneEntityCfg("trocar_2"),
+        }
+    )
 
 
 @configclass
 class RewardsCfg:
+    """Reward configuration for sparse reward mode.
+    
+    Each stage gives 0.25 reward on completion → Total reward for full task = 1.0
+    """
+    # Stage 0: Lift trocars
     lift_trocars = RewTerm(
         func=mdp.lift_trocars_reward,
-        weight=2.0,
+        weight=0.25,  # 4 stages × 0.25 = 1.0 total
         params={
             "table_height": 0.85483,
             "lift_threshold": 0.15,
             "asset_cfg1": SceneEntityCfg("trocar_1"),
             "asset_cfg2": SceneEntityCfg("trocar_2"),
             # Stage transition thresholds
+            "tip_align_threshold": 0.015,  # Threshold for tip alignment (m)
             "insertion_dist_threshold": 0.05,
             "insertion_angle_threshold": 0.15,
             "placement_x_min": -1.8,
             "placement_x_max": -1.4,
             "placement_y_min": 1.5,
             "placement_y_max": 1.8,
+            "use_sparse_reward": True,
         }
     )
     
-    insert_trocars = RewTerm(
-        func=mdp.trocar_insertion_reward,
-        weight=5.0,
+    # Stage 1: Tip alignment (find hole)
+    tip_alignment = RewTerm(
+        func=mdp.trocar_tip_alignment_reward,
+        weight=0.25,  # 4 stages × 0.25 = 1.0 total
         params={
-            "dist_std": 0.1,
-            "angle_std": 0.2,
-            "angle_threshold": 0.15, # ~8.6 degrees tolerance
+            "tip_dist_std": 0.02,  # Std for tip distance reward shaping
             "asset_cfg1": SceneEntityCfg("trocar_1"),
             "asset_cfg2": SceneEntityCfg("trocar_2"),
+            "use_sparse_reward": True,
         }
     )
     
+    # Stage 2: Insertion (push in)
+    insert_trocars = RewTerm(
+        func=mdp.trocar_insertion_reward,
+        weight=0.25,  # 4 stages × 0.25 = 1.0 total
+        params={
+            "angle_std": 0.2,  # Std for angle alignment reward
+            "angle_threshold": 0.10,  # ~5.7 degrees tolerance for parallelism
+            "center_dist_std": 0.05,  # Std for center distance reward
+            "asset_cfg1": SceneEntityCfg("trocar_1"),
+            "asset_cfg2": SceneEntityCfg("trocar_2"),
+            "use_sparse_reward": True,
+        }
+    )
+    
+    # Stage 3: Placement (place in tray)
     placement_trocars = RewTerm(
         func=mdp.trocar_placement_reward,
-        weight=1.0,
+        weight=0.25,  # 4 stages × 0.25 = 1.0 total
         params={
             "x_min": -1.8,
             "x_max": -1.4,
@@ -147,14 +227,25 @@ class RewardsCfg:
             "y_max": 1.8,
             "asset_cfg1": SceneEntityCfg("trocar_1"),
             "asset_cfg2": SceneEntityCfg("trocar_2"),
+            "use_sparse_reward": True,
         }
     )
-    pass
 
 @configclass
 class EventCfg:
     """Event configuration for scene reset."""
     
+    # Reset scene when episode terminates (timeout or success)
+    reset_scene = EventTermCfg(
+        func=base_mdp.reset_scene_to_default,
+        mode="reset"
+    )
+    
+    # Reset task stage tracker when environment resets
+    reset_task_stage = EventTermCfg(
+        func=mdp.reset_task_stage,
+        mode="reset"
+    )
     # Random rotation for box and trocars (±5 degrees)
     reset_box_random_rotation = EventTermCfg(
         func=mdp.reset_box_with_random_rotation,
@@ -167,33 +258,6 @@ class EventCfg:
         },
     )
     
-    # # Reset scene when episode terminates (timeout or success)
-    # reset_scene = EventTermCfg(
-    #     func=base_mdp.reset_scene_to_default,
-    #     mode="reset"
-    # )
-    
-    # # Reset task stage tracker when environment resets
-    # reset_task_stage = EventTermCfg(
-    #     func=mdp.reset_task_stage,
-    #     mode="reset"
-    # )
-    # reset_object = EventTermCfg(
-    #     func=mdp.reset_root_state_uniform,  # use uniform distribution reset function
-    #     mode="reset",   # set event mode to reset
-    #     params={
-    #         # position range parameter
-    #         "pose_range": {
-    #             "x": [-0.05, 0.05],  # x axis position range: -0.05 to 0.0 meter
-    #             "y": [-0.05, 0.05],   # y axis position range: 0.0 to 0.05 meter
-    #         },
-    #         # speed range parameter (empty dictionary means using default value)
-    #         "velocity_range": {},
-    #         # specify
-    #         "asset_cfg": SceneEntityCfg("object"),
-    #     },
-    # )
-
 
 @configclass
 class PickPlaceG129DEX3JointEnvCfg(ManagerBasedRLEnvCfg):
@@ -242,29 +306,23 @@ class PickPlaceG129DEX3JointEnvCfg(ManagerBasedRLEnvCfg):
         # Enable RTX Ray Tracing setting: Fractional Cutout Opacity
         # Using carb_settings allows direct override of RTX renderer options
         # Reference key corresponds to the Render Settings UI "Fractional Cutout Opacity"
-        self.sim.render.carb_settings = {
-            "rtx.raytracing.fractionalCutoutOpacity": True,
-        }
+        # self.sim.render.carb_settings = {
+        #     "rtx.raytracing.fractionalCutoutOpacity": True,
+        # }
+        import carb
+        carb.settings.get_settings().set_bool(
+            "/rtx/raytracing/fractionalCutoutOpacity", 
+            True
+        )
 
 
         # create event manager
         self.event_manager = SimpleEventManager()
 
-        # Custom reset function that directly writes joint positions (no PD controller swing)
-        def reset_all_with_direct_joints(env):
-            env_ids = torch.arange(env.num_envs, device=env.device)
-            # First reset scene to default
-            base_mdp.reset_scene_to_default(env, env_ids)
-            # Then directly write robot joint positions to bypass PD controller
-            robot = env.scene["robot"]
-            robot.write_joint_state_to_sim(
-                robot.data.default_joint_pos[env_ids].clone(),
-                robot.data.default_joint_vel[env_ids].clone(),
-                env_ids=env_ids
-            )
-
         self.event_manager.register("reset_all_self", SimpleEvent(
-            func=reset_all_with_direct_joints
+            func=lambda env: base_mdp.reset_scene_to_default(
+                env,
+                torch.arange(env.num_envs, device=env.device))
         ))
         
         # Register task stage reset event

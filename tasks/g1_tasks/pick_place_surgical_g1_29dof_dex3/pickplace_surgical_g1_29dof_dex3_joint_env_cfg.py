@@ -47,6 +47,52 @@ class ObjectTableSceneCfg(SurgicalSceneCfg):
     left_wrist_camera = CameraPresets.left_dex3_wrist_camera()
     right_wrist_camera = CameraPresets.right_dex3_wrist_camera()
 
+joint_names = [
+'left_hip_pitch_joint', 
+'right_hip_pitch_joint', 
+'left_hip_roll_joint', 
+'right_hip_roll_joint', 
+'left_hip_yaw_joint', 
+'right_hip_yaw_joint', 
+'left_knee_joint', 
+'right_knee_joint', 
+'left_ankle_pitch_joint',
+'right_ankle_pitch_joint',
+'left_ankle_roll_joint',
+'right_ankle_roll_joint',
+'waist_yaw_joint',
+'waist_roll_joint',
+'waist_pitch_joint',
+"left_shoulder_pitch_joint",
+"left_shoulder_roll_joint",
+"left_shoulder_yaw_joint",
+"left_elbow_joint",
+"left_wrist_roll_joint",
+"left_wrist_pitch_joint",
+"left_wrist_yaw_joint",
+"right_shoulder_pitch_joint",
+"right_shoulder_roll_joint",
+"right_shoulder_yaw_joint",
+"right_elbow_joint",
+"right_wrist_roll_joint",
+"right_wrist_pitch_joint",
+"right_wrist_yaw_joint",
+"left_hand_thumb_0_joint",
+"left_hand_thumb_1_joint",
+"left_hand_thumb_2_joint",
+"left_hand_middle_0_joint",
+"left_hand_middle_1_joint",
+"left_hand_index_0_joint",
+"left_hand_index_1_joint",
+"right_hand_thumb_0_joint",
+"right_hand_thumb_1_joint",
+"right_hand_thumb_2_joint",
+"right_hand_middle_0_joint",
+"right_hand_middle_1_joint",
+"right_hand_index_0_joint",
+"right_hand_index_1_joint",
+]
+
 ##
 # MDP settings
 ##
@@ -54,7 +100,7 @@ class ObjectTableSceneCfg(SurgicalSceneCfg):
 class ActionsCfg:
     """defines the action configuration related to robot control, using direct joint angle control
     """
-    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=1.0, use_default_offset=True)
+    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=joint_names, scale=1.0, use_default_offset=True, preserve_order=True)
 
 
 
@@ -70,9 +116,9 @@ class ObservationsCfg:
         """
 
         # 1. robot joint state observation
-        robot_joint_state = ObsTerm(func=mdp.get_robot_boy_joint_states)
+        robot_joint_state = ObsTerm(func=mdp.get_robot_boy_joint_states, params={"enable_dds": False})
         # 2. gripper joint state observation 
-        robot_gipper_state = ObsTerm(func=mdp.get_robot_dex3_joint_states)
+        robot_gipper_state = ObsTerm(func=mdp.get_robot_dex3_joint_states, params={"enable_dds": False})
 
         # 3. camera image observation
         camera_image = ObsTerm(func=mdp.get_camera_image)
@@ -107,49 +153,82 @@ class TerminationsCfg:
 
 @configclass
 class RewardsCfg:
-    # lift_trocars = RewTerm(
-    #     func=mdp.lift_trocars_reward,
-    #     weight=2.0,
-    #     params={
-    #         "table_height": 0.85483,
-    #         "lift_threshold": 0.15,
-    #         "asset_cfg1": SceneEntityCfg("trocar_1"),
-    #         "asset_cfg2": SceneEntityCfg("trocar_2"),
-    #         # Stage transition thresholds
-    #         "insertion_dist_threshold": 0.03,
-    #         "insertion_angle_threshold": 0.15,
-    #         "placement_x_min": -1.8,
-    #         "placement_x_max": -1.4,
-    #         "placement_y_min": 1.5,
-    #         "placement_y_max": 1.8,
-    #     }
-    # )
+    """Reward configuration for the task.
     
-    # insert_trocars = RewTerm(
-    #     func=mdp.trocar_insertion_reward,
-    #     weight=5.0,
-    #     params={
-    #         "dist_std": 0.1,
-    #         "angle_std": 0.2,
-    #         "angle_threshold": 0.15, # ~8.6 degrees tolerance
-    #         "asset_cfg1": SceneEntityCfg("trocar_1"),
-    #         "asset_cfg2": SceneEntityCfg("trocar_2"),
-    #     }
-    # )
+    Reward Mode:
+    - Dense (default): use_sparse_reward=False - continuous rewards with smooth transitions
+    - Sparse: use_sparse_reward=True - discrete rewards per stage completion
     
-    # placement_trocars = RewTerm(
-    #     func=mdp.trocar_placement_reward,
-    #     weight=1.0,
-    #     params={
-    #         "x_min": -1.8,
-    #         "x_max": -1.4,
-    #         "y_min": 1.5,
-    #         "y_max": 1.8,
-    #         "asset_cfg1": SceneEntityCfg("trocar_1"),
-    #         "asset_cfg2": SceneEntityCfg("trocar_2"),
-    #     }
-    # )
-    pass
+    Weight Configuration:
+    - For sparse rewards: Each stage weight = 0.25, so 4 stages × 0.25 = 1.0 total
+    - For dense rewards: Adjust weights based on task difficulty (current: equal weight)
+    
+    To enable sparse rewards, add "use_sparse_reward": True to each reward's params.
+    """
+    
+    # Stage 0: Lift trocars
+    lift_trocars = RewTerm(
+        func=mdp.lift_trocars_reward,
+        weight=0.25,  # 4 stages × 0.25 = 1.0 total (for sparse); adjust for dense
+    params={
+        "table_height": 0.85483,
+        "lift_threshold": 0.15,
+        "asset_cfg1": SceneEntityCfg("trocar_1"),
+        "asset_cfg2": SceneEntityCfg("trocar_2"),
+        # Stage transition thresholds
+        "tip_align_threshold": 0.015,  # Threshold for tip alignment (m)
+        "insertion_dist_threshold": 0.03,
+        "insertion_angle_threshold": 0.15,
+        "placement_x_min": -1.8,
+        "placement_x_max": -1.4,
+        "placement_y_min": 1.5,
+        "placement_y_max": 1.8,
+        # Reward mode
+        "use_sparse_reward": False,  # Set to True for sparse (discrete) rewards
+    }
+)
+
+# Stage 1: Tip alignment (find hole)
+tip_alignment = RewTerm(
+    func=mdp.trocar_tip_alignment_reward,
+    weight=0.25,  # 4 stages × 0.25 = 1.0 total (for sparse); adjust for dense
+    params={
+        "tip_dist_std": 0.02,  # Std for tip distance reward shaping
+        "asset_cfg1": SceneEntityCfg("trocar_1"),
+        "asset_cfg2": SceneEntityCfg("trocar_2"),
+        "use_sparse_reward": False,  # Set to True for sparse (discrete) rewards
+    }
+)
+
+# Stage 2: Insertion (push in)
+insert_trocars = RewTerm(
+    func=mdp.trocar_insertion_reward,
+    weight=0.25,  # 4 stages × 0.25 = 1.0 total (for sparse); adjust for dense
+    params={
+        "angle_std": 0.2,  # Std for angle alignment reward
+        "angle_threshold": 0.10,  # ~5.7 degrees tolerance for parallelism
+        "center_dist_std": 0.05,  # Std for center distance reward
+        "asset_cfg1": SceneEntityCfg("trocar_1"),
+        "asset_cfg2": SceneEntityCfg("trocar_2"),
+        "use_sparse_reward": False,  # Set to True for sparse (discrete) rewards
+    }
+)
+
+# Stage 3: Placement (place in tray)
+placement_trocars = RewTerm(
+    func=mdp.trocar_placement_reward,
+    weight=0.25,  # 4 stages × 0.25 = 1.0 total (for sparse); adjust for dense
+    params={
+        "x_min": -1.8,
+        "x_max": -1.4,
+        "y_min": 1.5,
+        "y_max": 1.8,
+        "asset_cfg1": SceneEntityCfg("trocar_1"),
+        "asset_cfg2": SceneEntityCfg("trocar_2"),
+        "use_sparse_reward": False,  # Set to True for sparse (discrete) rewards
+    }
+)
+
 @configclass
 class EventCfg:
     """Event configuration for scene reset."""
@@ -229,10 +308,18 @@ class PickPlaceG129DEX3JointEnvCfg(ManagerBasedRLEnvCfg):
         # Enable RTX Ray Tracing setting: Fractional Cutout Opacity
         # Using carb_settings allows direct override of RTX renderer options
         # Reference key corresponds to the Render Settings UI "Fractional Cutout Opacity"
-        self.sim.render.carb_settings = {
-            "rtx.raytracing.fractionalCutoutOpacity": True,
-        }
-
+        # NOTE: Commented out due to compatibility issues with some IsaacLab versions
+        # self.sim.render.carb_settings = {
+        #     "rtx.raytracing.fractionalCutoutOpacity": True,
+        # }
+        # self.sim.render.carb_settings = {
+        #     "/rtx/raytracing/fractionalCutoutOpacity": True,  # 注意前面的 /
+        # }
+        import carb
+        carb.settings.get_settings().set_bool(
+            "/rtx/raytracing/fractionalCutoutOpacity", 
+            True
+        )
 
         # create event manager
         self.event_manager = SimpleEventManager()

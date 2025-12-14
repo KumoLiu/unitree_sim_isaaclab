@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
-__all__ = ["reset_box_with_random_rotation", "reset_robot_to_default_joint_positions"]
+__all__ = ["reset_box_with_random_rotation", "reset_robot_to_default_joint_positions", "object_drop_termination"]
 
 import torch
 import math
 from typing import TYPE_CHECKING
 
 from isaaclab.managers import SceneEntityCfg
+from isaaclab.assets import RigidObject
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
@@ -117,23 +118,54 @@ def reset_box_with_random_rotation(
     trocar_1_new_state[:, 3:7] = quat_multiply(delta_quat, trocar_1_default_state[:, 3:7])
     trocar_2_new_state[:, 3:7] = quat_multiply(delta_quat, trocar_2_default_state[:, 3:7])
     
-    # 关键修复：分别写入 pose 和 velocity，避免物理引擎的插值/平滑效果
-    # 使用分离的 API 调用能确保瞬时传送，而不是平滑过渡
-    
-    # 创建零速度张量
     zero_velocity = torch.zeros(len(env_ids), 6, device=env.device)  # [lin_vel(3), ang_vel(3)]
     
-    # 先写入位置和旋转（pose = position + quaternion）
     box.write_root_pose_to_sim(box_new_state[:, :7], env_ids=env_ids)
     trocar_1.write_root_pose_to_sim(trocar_1_new_state[:, :7], env_ids=env_ids)
     trocar_2.write_root_pose_to_sim(trocar_2_new_state[:, :7], env_ids=env_ids)
     
-    # 然后立即写入零速度（确保没有任何动量）
     box.write_root_velocity_to_sim(zero_velocity, env_ids=env_ids)
     trocar_1.write_root_velocity_to_sim(zero_velocity, env_ids=env_ids)
     trocar_2.write_root_velocity_to_sim(zero_velocity, env_ids=env_ids)
 
-
+def object_drop_termination(
+    env: ManagerBasedRLEnv,
+    drop_height_threshold: float = 0.5,
+    asset_cfg1: SceneEntityCfg = SceneEntityCfg("trocar_1"),
+    asset_cfg2: SceneEntityCfg = SceneEntityCfg("trocar_2"),
+) -> torch.Tensor:
+    """Termination function that triggers when objects drop below threshold.
+    
+    This can be used as an alternative to auto-reset, marking the episode as terminated
+    so the training framework handles the reset.
+    
+    Args:
+        env: The environment instance
+        drop_height_threshold: Height below which objects are considered dropped
+        asset_cfg1: Configuration for first trocar
+        asset_cfg2: Configuration for second trocar
+        
+    Returns:
+        Boolean tensor indicating which environments should terminate due to drops
+    """
+    # Get rigid objects
+    obj1: RigidObject = env.scene[asset_cfg1.name]
+    obj2: RigidObject = env.scene[asset_cfg2.name]
+    
+    # Get positions
+    pos1 = obj1.data.root_pos_w
+    pos2 = obj2.data.root_pos_w
+    
+    # Check if either object has dropped
+    dropped_1 = pos1[:, 2] < drop_height_threshold
+    dropped_2 = pos2[:, 2] < drop_height_threshold
+    
+    dropped = dropped_1 | dropped_2
+    
+    if dropped.any():
+        print(f"🔴 Drop termination triggered for {dropped.sum().item()} environment(s)")
+    
+    return dropped
 
 def quat_multiply(q1: torch.Tensor, q2: torch.Tensor) -> torch.Tensor:
     """Multiply two quaternions (Hamilton product).

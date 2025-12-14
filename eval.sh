@@ -1,0 +1,5 @@
+python eval_gr00t_direct.py --model_path /home/nvidia/workspace/model/g1_install_trocar_sim_box_v3_60_train_bs32_1_gpus_cos_30k_tune_llm/ --enable_cameras --save_video --num_episodes 100 --headless
+python eval_gr00t_direct.py --model_path /home/nvidia/workspace/model/g1_install_trocar_sim_box_v3_60_train_bs16_1_gpus_cos_30k_tune_llm_visual/ --enable_cameras --save_video --num_episodes 100 --headless
+python eval_gr00t_direct.py --model_path /home/nvidia/workspace/model/g1_install_trocar_sim_box_v3_60_train_bs32_1_gpus_cos_20k/ --enable_cameras --save_video --num_episodes 100 --headless
+python eval_gr00t_direct.py --model_path /home/nvidia/workspace/model/g1_install_trocar_sim_box_v3_60_train_bs32_1_gpus_cos_30k_tune_visual/ --enable_cameras --save_video --num_episodes 100 --headless
+python eval_gr00t_direct.py --model_path /home/nvidia/workspace/model/g1_install_trocar_sim_box_v3_60_train_bs32_1_gpus_cos_30k/ --enable_cameras --save_video --num_episodes 100 --headless
