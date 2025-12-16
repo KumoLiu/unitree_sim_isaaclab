@@ -39,7 +39,7 @@ def get_task_stage(env: ManagerBasedRLEnv) -> torch.Tensor:
     return env._task_stage
 
 
-def should_print_debug(env: ManagerBasedRLEnv, print_interval: int = 50) -> bool:
+def should_print_debug(env: ManagerBasedRLEnv, print_interval: int = 50, print_log: bool = True) -> bool:
     """Check if debug info should be printed based on episode step counter.
     
     Uses the environment's built-in episode_length_buf to track steps,
@@ -52,6 +52,10 @@ def should_print_debug(env: ManagerBasedRLEnv, print_interval: int = 50) -> bool
     Returns:
         bool: True if should print (only on first call per step)
     """
+    # Hard gate: allow callers to disable all logs from this module.
+    if not print_log:
+        return False
+
     # Use environment's episode step counter (standard in Isaac Lab)
     if not hasattr(env, 'episode_length_buf'):
         return False
@@ -89,6 +93,7 @@ def update_task_stage(
     placement_y_min: float = 1.5,
     placement_y_max: float = 1.8,
     placement_z_min: float = 0.9,
+    print_log: bool = True,
 ) -> torch.Tensor:
     """Update task stage based on current state.
     
@@ -165,7 +170,7 @@ def update_task_stage(
     stage = torch.where((stage == 3) & both_in_zone, torch.full_like(stage, 4), stage)
     
     # Print stage transitions (AFTER all stage transitions - always print when stage changes)
-    if (stage != old_stage).any():
+    if print_log and (stage != old_stage).any():
         for env_id in range(env.num_envs):
             if stage[env_id] != old_stage[env_id]:
                 print(f"🎯 Env {env_id}: Stage {old_stage[env_id].item()} → {stage[env_id].item()}")
@@ -188,6 +193,7 @@ def lift_trocars_reward(
     placement_y_max: float = 1.8,
     placement_z_min: float = 0.9,
     use_sparse_reward: bool = False,
+    print_log: bool = True,
 ) -> torch.Tensor:
     """Reward for lifting both trocars above the table.
     
@@ -198,12 +204,22 @@ def lift_trocars_reward(
                           If False (default), give continuous reward based on current state.
     """
     # Update task stage first - check ALL stage transitions once per step
-    stage = update_task_stage(env, asset_cfg1, asset_cfg2, 
-                             table_height, lift_threshold, tip_align_threshold,
-                             insertion_dist_threshold, insertion_angle_threshold,
-                             placement_x_min, placement_x_max,
-                             placement_y_min, placement_y_max,
-                             placement_z_min)
+    stage = update_task_stage(
+        env,
+        asset_cfg1,
+        asset_cfg2,
+        table_height,
+        lift_threshold,
+        tip_align_threshold,
+        insertion_dist_threshold,
+        insertion_angle_threshold,
+        placement_x_min,
+        placement_x_max,
+        placement_y_min,
+        placement_y_max,
+        placement_z_min,
+        print_log=print_log,
+    )
     
     # Get the rigid objects from the scene
     obj1: RigidObject = env.scene[asset_cfg1.name]
@@ -224,13 +240,20 @@ def lift_trocars_reward(
         # Sparse reward mode: give 1.0 ONLY when stage transitions from 0 to 1
         # Track previous stage
         if not hasattr(env, '_prev_stage_lift'):
-            env._prev_stage_lift = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
+            # Initialize prev_stage to current stage to avoid false positives on first call
+            env._prev_stage_lift = stage.clone()
         
         # Reward = 1.0 only on transition step (prev_stage=0, curr_stage=1)
         stage_just_completed = (env._prev_stage_lift == 0) & (stage >= 1)
         reward = torch.where(stage_just_completed,
-                           torch.ones(env.num_envs, device=env.device),
+                           torch.ones(env.num_envs, device=env.device) / env.step_dt,
                            torch.zeros(env.num_envs, device=env.device))
+        
+        # Debug: Print when reward is given
+        if print_log and stage_just_completed.any():
+            for env_id in range(env.num_envs):
+                if stage_just_completed[env_id]:
+                    print(f"  💰 Lift Reward (Sparse): Env {env_id} | prev_stage={env._prev_stage_lift[env_id].item()} -> curr_stage={stage[env_id].item()} | reward=1.0")
         
         # Update previous stage for next step
         env._prev_stage_lift = stage.clone()
@@ -255,7 +278,7 @@ def lift_trocars_reward(
         reward = torch.where(stage == 0, current_reward, env._lift_reward_locked)
     
     # Print debug info periodically (every 50 steps)
-    if should_print_debug(env):
+    if should_print_debug(env, print_log=print_log):
         mode_str = "Sparse" if use_sparse_reward else "Dense"
         print(f' Stage: {stage[0].item()} | Lift ({mode_str}): {reward[0].item():.2f} | z1: {pos1[0,2]:.3f} | z2: {pos2[0,2]:.3f}')
     
@@ -358,6 +381,7 @@ def trocar_tip_alignment_reward(
     asset_cfg1: SceneEntityCfg = SceneEntityCfg("trocar_1"),
     asset_cfg2: SceneEntityCfg = SceneEntityCfg("trocar_2"),
     use_sparse_reward: bool = False,
+    print_log: bool = True,
 ) -> torch.Tensor:
     """Reward for aligning trocar tips (Stage 1: Finding the hole).
     
@@ -390,12 +414,13 @@ def trocar_tip_alignment_reward(
         # Sparse reward mode: give 1.0 ONLY when stage transitions from 1 to 2
         # Track previous stage
         if not hasattr(env, '_prev_stage_tip'):
-            env._prev_stage_tip = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
+            # Initialize prev_stage to current stage to avoid false positives on first call
+            env._prev_stage_tip = stage.clone()
         
         # Reward = 1.0 only on transition step (prev_stage=1, curr_stage=2)
         stage_just_completed = (env._prev_stage_tip == 1) & (stage >= 2)
         reward = torch.where(stage_just_completed,
-                           torch.ones(env.num_envs, device=env.device),
+                           torch.ones(env.num_envs, device=env.device) / env.step_dt ,
                            torch.zeros(env.num_envs, device=env.device))
         
         # Update previous stage for next step
@@ -424,7 +449,7 @@ def trocar_tip_alignment_reward(
                                        env._tip_reward_locked))
     
     # Debug info
-    if should_print_debug(env) and stage[0].item() == 1:
+    if should_print_debug(env, print_log=print_log) and stage[0].item() == 1:
         mode_str = "Sparse" if use_sparse_reward else "Dense"
         print(f'   └─ Stage 1 (Find Hole, {mode_str}): tip_pos_1=({tip_pos1[0,0]:.3f}, {tip_pos1[0,1]:.3f}, {tip_pos1[0,2]:.3f}) | '
               f'tip_pos_2=({tip_pos2[0,0]:.3f}, {tip_pos2[0,1]:.3f}, {tip_pos2[0,2]:.3f}) | '
@@ -441,6 +466,7 @@ def trocar_insertion_reward(
     asset_cfg1: SceneEntityCfg = SceneEntityCfg("trocar_1"),
     asset_cfg2: SceneEntityCfg = SceneEntityCfg("trocar_2"),
     use_sparse_reward: bool = False,
+    print_log: bool = True,
 ) -> torch.Tensor:
     """Reward for inserting trocar_2 into trocar_1 (Stage 2: Pushing in).
     
@@ -495,12 +521,13 @@ def trocar_insertion_reward(
         # Sparse reward mode: give 1.0 ONLY when stage transitions from 2 to 3
         # Track previous stage
         if not hasattr(env, '_prev_stage_insert'):
-            env._prev_stage_insert = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
+            # Initialize prev_stage to current stage to avoid false positives on first call
+            env._prev_stage_insert = stage.clone()
         
         # Reward = 1.0 only on transition step (prev_stage=2, curr_stage=3)
         stage_just_completed = (env._prev_stage_insert == 2) & (stage >= 3)
         reward = torch.where(stage_just_completed,
-                           torch.ones(env.num_envs, device=env.device),
+                           torch.ones(env.num_envs, device=env.device) / env.step_dt,
                            torch.zeros(env.num_envs, device=env.device))
         
         # Update previous stage for next step
@@ -538,7 +565,7 @@ def trocar_insertion_reward(
                                        env._insertion_reward_locked))
     
     # Debug info
-    if should_print_debug(env) and stage[0].item() == 2:
+    if should_print_debug(env, print_log=print_log) and stage[0].item() == 2:
         mode_str = "Sparse" if use_sparse_reward else "Dense"
         print(f'   └─ Stage 2 (Push In, {mode_str}): angle={angle[0].item():.3f} | '
               f'center_d={center_dist[0].item():.4f} | '
@@ -557,6 +584,7 @@ def trocar_placement_reward(
     asset_cfg1: SceneEntityCfg = SceneEntityCfg("trocar_1"),
     asset_cfg2: SceneEntityCfg = SceneEntityCfg("trocar_2"),
     use_sparse_reward: bool = False,
+    print_log: bool = True,
 ) -> torch.Tensor:
     """Reward for placing both trocars in the target tray region (Stage 3).
     
@@ -613,12 +641,13 @@ def trocar_placement_reward(
         # Sparse reward mode: give 1.0 ONLY when stage transitions from 3 to 4
         # Track previous stage
         if not hasattr(env, '_prev_stage_place'):
-            env._prev_stage_place = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
+            # Initialize prev_stage to current stage to avoid false positives on first call
+            env._prev_stage_place = stage.clone()
         
         # Reward = 1.0 only on transition step (prev_stage=3, curr_stage=4)
         stage_just_completed = (env._prev_stage_place == 3) & (stage >= 4)
         reward = torch.where(stage_just_completed,
-                           torch.ones(env.num_envs, device=env.device),
+                           torch.ones(env.num_envs, device=env.device) / env.step_dt,
                            torch.zeros(env.num_envs, device=env.device))
         
         # Update previous stage for next step
@@ -646,7 +675,7 @@ def trocar_placement_reward(
                                        env._placement_reward_locked))
     
     # Debug info
-    if should_print_debug(env) and stage[0].item() == 3:
+    if should_print_debug(env, print_log=print_log) and stage[0].item() == 3:
         mode_str = "Sparse" if use_sparse_reward else "Dense"
         print(f'   └─ Stage 3 (Placement, {mode_str}): in_zone={both_in_zone[0].item()} | '
               f'z1={pos1[0,2]:.3f} | z2={pos2[0,2]:.3f}')
@@ -656,8 +685,7 @@ def trocar_placement_reward(
 
 def task_success_termination(
     env: ManagerBasedRLEnv,
-    asset_cfg1: SceneEntityCfg = SceneEntityCfg("trocar_1"),
-    asset_cfg2: SceneEntityCfg = SceneEntityCfg("trocar_2"),
+    print_log: bool = True,
 ) -> torch.Tensor:
     """Termination condition: task is complete when stage reaches 4.
     
@@ -667,7 +695,7 @@ def task_success_termination(
     stage = get_task_stage(env)
     task_complete = stage >= 4
     
-    if task_complete.any():
+    if print_log and task_complete.any():
         print(f"🎉 Task completed in {task_complete.sum().item()} environment(s)!")
     
     return task_complete
@@ -676,6 +704,7 @@ def task_success_termination(
 def reset_task_stage(
     env: ManagerBasedRLEnv,
     env_ids: torch.Tensor,
+    print_log: bool = True,
 ) -> None:
     """Reset task stage to 0 for specified environments.
     
@@ -713,4 +742,5 @@ def reset_task_stage(
     if hasattr(env, '_last_debug_print_step'):
         env._last_debug_print_step = -1
     
-    print(f"Reset task stage for {len(env_ids)} environment(s)")
+    if print_log:
+        print(f"Reset task stage for {len(env_ids)} environment(s)")

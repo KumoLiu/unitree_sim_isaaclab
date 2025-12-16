@@ -30,6 +30,7 @@ parser.add_argument("--seed", type=int, default=42, help="random seed")
 parser.add_argument("--save_video", action="store_true", help="save video of evaluation")
 parser.add_argument("--video_dir", type=str, default="./eval_videos", help="directory to save videos")
 parser.add_argument("--grid_layout", type=str, default="4x5", help="grid layout (e.g., '4x5' for 4 rows and 5 columns)")
+parser.add_argument("--action_chunk_size", type=int, default=1, help="number of actions to use from action chunk (1-16, default: 1)")
 
 # Add AppLauncher parameters
 AppLauncher.add_app_launcher_args(parser)
@@ -357,7 +358,7 @@ def check_success(env) -> bool:
     return False
 
 
-def evaluate_episode(env, policy, max_steps: int, episode_num: int, save_video: bool = False) -> Dict:
+def evaluate_episode(env, policy, max_steps: int, episode_num: int, save_video: bool = False, action_chunk_size: int = 1) -> Dict:
     """
     Evaluate one episode.
     
@@ -367,6 +368,7 @@ def evaluate_episode(env, policy, max_steps: int, episode_num: int, save_video: 
         max_steps: Maximum steps per episode
         episode_num: Episode index
         save_video: Whether to collect video frames (for grid video)
+        action_chunk_size: Number of actions to use from action chunk (1-16)
     
     Returns:
         Dict with episode results: success, steps, reward, video_frames
@@ -378,71 +380,88 @@ def evaluate_episode(env, policy, max_steps: int, episode_num: int, save_video: 
     # Reset environment
     obs, _ = env.reset()
     
+    # Validate action_chunk_size
+    action_chunk_size = max(1, min(16, action_chunk_size))  # Clamp to [1, 16]
+    
     # Initialize video recording
     video_frames = [] if save_video else None
+    
+    # Initialize action buffer for action chunking
+    action_buffer = []
     
     total_reward = 0.0
     success = False
     
     for step in range(max_steps):
-        # Process observation for policy
-        try:
-            processed_obs = process_observation(obs, env, device=policy.device)
-        except Exception as e:
-            print(f"⚠️ Failed to process observation: {e}")
-            import traceback
-            traceback.print_exc()
-            # Use dummy observation as fallback
-            processed_obs = {
-                "state.left_arm": torch.zeros(1, 7, device=policy.device),
-                "state.right_arm": torch.zeros(1, 7, device=policy.device),
-                "state.left_hand": torch.zeros(1, 7, device=policy.device),
-                "state.right_hand": torch.zeros(1, 7, device=policy.device),
-            }
-        
-        # Get action from policy
-        with torch.no_grad():
+        # Get action from buffer or policy
+        if len(action_buffer) == 0:
+            # Buffer is empty, need to get new actions from policy
+            # Process observation for policy
             try:
-                # Add task description annotation (required by Gr00t)
-                processed_obs["annotation.human.task_description"] = ["install trocar from box"]
-                
-                # Move all tensors to CPU before passing to policy (for numpy conversion)
-                processed_obs_cpu = {}
-                for k, v in processed_obs.items():
-                    if isinstance(v, torch.Tensor):
-                        processed_obs_cpu[k] = v.cpu()
-                    else:
-                        processed_obs_cpu[k] = v
-                
-                # Gr00t policy expects get_action() method which returns a dict
-                # Format: {"left_arm": array, "right_arm": array, "left_hand": array, "right_hand": array}
-                action_dict = policy.get_action(processed_obs_cpu)
-                
-                # Concatenate all action components (following utils.py implementation)
-                action = np.concatenate(
-                    [np.atleast_1d(action_dict[key]) for key in action_dict.keys()],
-                    axis=1,
-                )
-                
-                # Pad to 43 dimensions (full G1 DOF)
-                # Action shape: (16, 28) where 16 is chunk size, 28 is action dim
-                # G1 full body: 12 (legs) + 3 (waist) + 28 (arms + hands) = 43
-                # Need to pad 15 zeros (legs + waist) on action dimension (axis=1)
-                if action.shape[1] == 28:
-                    # Pad (16, 15) zeros at the front on action dimension
-                    action = np.concatenate([np.zeros((16, 15)), action], axis=1)  # Shape: (16, 43)
-                
-                # For action chunking: use only the first action in the chunk
-                # GR00T predicts 16 future actions, but we only execute the first one
-                if len(action.shape) == 2 and action.shape[0] > 1:
-                    action = action[0]  # Take first action: (43,)
-                
+                processed_obs = process_observation(obs, env, device=policy.device)
             except Exception as e:
-                print(f"⚠️ Policy prediction failed at step {step}: {e}")
+                print(f"⚠️ Failed to process observation: {e}")
                 import traceback
                 traceback.print_exc()
-                # Use zero action as fallback
-                action = np.zeros(43)  # 43 DOF for full G1 body
+                # Use dummy observation as fallback
+                processed_obs = {
+                    "state.left_arm": torch.zeros(1, 7, device=policy.device),
+                    "state.right_arm": torch.zeros(1, 7, device=policy.device),
+                    "state.left_hand": torch.zeros(1, 7, device=policy.device),
+                    "state.right_hand": torch.zeros(1, 7, device=policy.device),
+                }
+            
+            # Get action from policy
+            with torch.no_grad():
+                try:
+                    # Add task description annotation (required by Gr00t)
+                    processed_obs["annotation.human.task_description"] = ["install trocar from box"]
+                    
+                    # Move all tensors to CPU before passing to policy (for numpy conversion)
+                    processed_obs_cpu = {}
+                    for k, v in processed_obs.items():
+                        if isinstance(v, torch.Tensor):
+                            processed_obs_cpu[k] = v.cpu()
+                        else:
+                            processed_obs_cpu[k] = v
+                    
+                    # Gr00t policy expects get_action() method which returns a dict
+                    # Format: {"left_arm": array, "right_arm": array, "left_hand": array, "right_hand": array}
+                    action_dict = policy.get_action(processed_obs_cpu)
+                    
+                    # Concatenate all action components (following utils.py implementation)
+                    action_chunk = np.concatenate(
+                        [np.atleast_1d(action_dict[key]) for key in action_dict.keys()],
+                        axis=1,
+                    )
+                    
+                    # Pad to 43 dimensions (full G1 DOF)
+                    # Action shape: (16, 28) where 16 is chunk size, 28 is action dim
+                    # G1 full body: 12 (legs) + 3 (waist) + 28 (arms + hands) = 43
+                    # Need to pad 15 zeros (legs + waist) on action dimension (axis=1)
+                    if action_chunk.shape[1] == 28:
+                        # Pad (16, 15) zeros at the front on action dimension
+                        action_chunk = np.concatenate([np.zeros((16, 15)), action_chunk], axis=1)  # Shape: (16, 43)
+                    
+                    # Extract specified number of actions from chunk
+                    # GR00T predicts 16 future actions, use the first N based on action_chunk_size
+                    if len(action_chunk.shape) == 2 and action_chunk.shape[0] > 1:
+                        # Take first action_chunk_size actions and store in buffer
+                        num_actions = min(action_chunk_size, action_chunk.shape[0])
+                        action_buffer = [action_chunk[i] for i in range(num_actions)]
+                    else:
+                        # Single action, add to buffer
+                        action_buffer = [action_chunk]
+                    
+                except Exception as e:
+                    print(f"⚠️ Policy prediction failed at step {step}: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    # Use zero action as fallback
+                    action_buffer = [np.zeros(43)]  # 43 DOF for full G1 body
+        
+        # Pop action from buffer
+        action = action_buffer.pop(0)
         
         # Step environment
         # Convert to torch tensor and add batch dimension for num_envs
@@ -515,6 +534,7 @@ def main():
     print(f"Model: {args_cli.model_path}")
     print(f"Episodes: {args_cli.num_episodes}")
     print(f"Device: {args_cli.device}")
+    print(f"Action Chunk Size: {args_cli.action_chunk_size}")
     print("="*60)
     
     # Parse environment configuration
@@ -574,7 +594,8 @@ def main():
                 policy, 
                 args_cli.max_steps, 
                 episode,
-                save_video=args_cli.save_video
+                save_video=args_cli.save_video,
+                action_chunk_size=args_cli.action_chunk_size
             )
             results.append(result)
             
@@ -593,7 +614,9 @@ def main():
         avg_reward = np.mean([r["total_reward"] for r in results])
         
         success_steps = [r["steps"] for r in results if r["success"]]
+        success_rewards = [r["total_reward"] for r in results if r["success"]]
         avg_success_steps = np.mean(success_steps) if success_steps else 0
+        avg_success_reward = np.mean(success_rewards) if success_rewards else 0
         
         print(f"\n📊 Overall Statistics:")
         print(f"  Total Episodes: {len(results)}")
@@ -619,13 +642,15 @@ def main():
             f.write(f"Task: {args_cli.task}\n")
             f.write(f"Model: {args_cli.model_path}\n")
             f.write(f"Episodes: {args_cli.num_episodes}\n")
+            f.write(f"Action Chunk Size: {args_cli.action_chunk_size}\n")
             f.write(f"Success Rate: {success_rate:.1f}%\n")
             f.write(f"Average Steps: {avg_steps:.1f}\n")
             f.write(f"Average Reward: {avg_reward:.2f}\n")
             f.write(f"\nDetailed Results:\n")
             for r in results:
                 status = "SUCCESS" if r["success"] else "FAILED"
-                f.write(f"  Episode {r['episode']+1}: {status} | Steps: {r['steps']} | Reward: {r['total_reward']:.2f}\n")
+                stage = r.get("final_stage", -1)
+                f.write(f"  Episode {r['episode']+1}: {status} | Stage: {stage}/4 | Steps: {r['steps']} | Reward: {r['total_reward']:.3f}\n")
         
         print(f"\n💾 Results saved to: {results_file}")
         

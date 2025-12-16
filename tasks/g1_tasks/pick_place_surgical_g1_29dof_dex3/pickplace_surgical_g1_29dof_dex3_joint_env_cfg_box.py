@@ -145,10 +145,6 @@ class TerminationsCfg:
     task_success = DoneTerm(
         func=mdp.task_success_termination,
         time_out=False,  # This is a success termination, not a failure
-        params={
-            "asset_cfg1": SceneEntityCfg("trocar_1"),
-            "asset_cfg2": SceneEntityCfg("trocar_2"),
-        }
     )
     # Object drop termination (optional - uncomment to use)
     # If enabled, episodes will terminate when objects drop, and training framework will handle reset
@@ -167,12 +163,13 @@ class TerminationsCfg:
 class RewardsCfg:
     """Reward configuration for sparse reward mode.
     
-    Each stage gives 0.25 reward on completion → Total reward for full task = 1.0
+    Each stage gives 1.0 reward on completion → Total reward for full task = 4.0
+    This ensures clear reward signal for each stage transition.
     """
     # Stage 0: Lift trocars
     lift_trocars = RewTerm(
         func=mdp.lift_trocars_reward,
-        weight=0.25,  # 4 stages × 0.25 = 1.0 total
+        weight=1.0,  # Give 1.0 reward when stage 0->1 completes
         params={
             "table_height": 0.85483,
             "lift_threshold": 0.15,
@@ -187,25 +184,27 @@ class RewardsCfg:
             "placement_y_min": 1.5,
             "placement_y_max": 1.8,
             "use_sparse_reward": True,
+            "print_log": False,
         }
     )
     
     # Stage 1: Tip alignment (find hole)
     tip_alignment = RewTerm(
         func=mdp.trocar_tip_alignment_reward,
-        weight=0.25,  # 4 stages × 0.25 = 1.0 total
+        weight=1.0,  # Give 1.0 reward when stage 1->2 completes
         params={
             "tip_dist_std": 0.02,  # Std for tip distance reward shaping
             "asset_cfg1": SceneEntityCfg("trocar_1"),
             "asset_cfg2": SceneEntityCfg("trocar_2"),
             "use_sparse_reward": True,
+            "print_log": False,
         }
     )
     
     # Stage 2: Insertion (push in)
     insert_trocars = RewTerm(
         func=mdp.trocar_insertion_reward,
-        weight=0.25,  # 4 stages × 0.25 = 1.0 total
+        weight=1.0,  # Give 1.0 reward when stage 2->3 completes
         params={
             "angle_std": 0.2,  # Std for angle alignment reward
             "angle_threshold": 0.10,  # ~5.7 degrees tolerance for parallelism
@@ -213,13 +212,14 @@ class RewardsCfg:
             "asset_cfg1": SceneEntityCfg("trocar_1"),
             "asset_cfg2": SceneEntityCfg("trocar_2"),
             "use_sparse_reward": True,
+            "print_log": False,
         }
     )
     
     # Stage 3: Placement (place in tray)
     placement_trocars = RewTerm(
         func=mdp.trocar_placement_reward,
-        weight=0.25,  # 4 stages × 0.25 = 1.0 total
+        weight=1.0,  # Give 1.0 reward when stage 3->4 completes
         params={
             "x_min": -1.8,
             "x_max": -1.4,
@@ -295,13 +295,6 @@ class PickPlaceG129DEX3JointEnvCfg(ManagerBasedRLEnvCfg):
         # self.sim.dt = 0.005
         self.sim.dt = 1/200
         self.sim.render_interval = self.decimation
-        # self.sim.physx.bounce_threshold_velocity = 0.2
-        # self.sim.physics_material.restitution = 0.0
-        # self.sim.physics_material.friction_combine_mode = "max"       # 摩擦力合并模式
-        # self.sim.physics_material.restitution_combine_mode = "min"  
-        # self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
-        # self.sim.physx.gpu_total_aggregate_pairs_capacity = 16 * 1024
-        # self.sim.physx.friction_correlation_distance = 0.00625
         self.sim.render.enable_translucency = True
         # Enable RTX Ray Tracing setting: Fractional Cutout Opacity
         # Using carb_settings allows direct override of RTX renderer options
