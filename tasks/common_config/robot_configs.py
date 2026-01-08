@@ -6,6 +6,7 @@ include the basic configuration for different robots, support scene-specific par
 support different robot variants: with/without waist joint, different finger configurations
 """
 
+import numpy as np
 from isaaclab.assets import ArticulationCfg
 from isaaclab.utils import configclass
 from robots.unitree import G129_CFG_WITH_DEX1_BASE_FIX,G129_CFG_WITH_DEX3_BASE_FIX,G129_CFG_WITH_INSPIRE_HAND,G129_CFG_WITH_DEX1_WHOLEBODY,G129_CFG_WITH_DEX3_WHOLEBODY,G129_CFG_WITH_INSPIRE_WHOLEBODY,H12_CFG_WITH_INSPIRE_HAND
@@ -63,23 +64,39 @@ class RobotJointTemplates:
     def get_arm_joints(cls) -> Dict[str, float]:
         """get the default position of the arm joints"""
         return {
-            # left arm joint
-            "left_shoulder_pitch_joint": 0.0,
-            "left_shoulder_roll_joint": 0.0,
-            "left_shoulder_yaw_joint": 0.0,
-            "left_elbow_joint": -0.3,
-            "left_wrist_roll_joint": 0.0,
-            "left_wrist_pitch_joint": 0.0,
-            "left_wrist_yaw_joint": 0.0,
+            # # left arm joint
+            # "left_shoulder_pitch_joint": 0.0,
+            # "left_shoulder_roll_joint": 0.0,
+            # "left_shoulder_yaw_joint": 0.0,
+            # "left_elbow_joint": -0.3,
+            # "left_wrist_roll_joint": 0.0,
+            # "left_wrist_pitch_joint": 0.0,
+            # "left_wrist_yaw_joint": 0.0,
             
-            # right arm joint
-            "right_shoulder_pitch_joint": 0.0,
-            "right_shoulder_roll_joint": 0.0,
-            "right_shoulder_yaw_joint": 0.0,
-            "right_elbow_joint": -0.3,
-            "right_wrist_roll_joint": 0.0,
-            "right_wrist_pitch_joint": 0.0,
-            "right_wrist_yaw_joint": 0.0,
+            # # right arm joint
+            # "right_shoulder_pitch_joint": 0.0,
+            # "right_shoulder_roll_joint": 0.0,
+            # "right_shoulder_yaw_joint": 0.0,
+            # "right_elbow_joint": -0.3,
+            # "right_wrist_roll_joint": 0.0,
+            # "right_wrist_pitch_joint": 0.0,
+            # "right_wrist_yaw_joint": 0.0,
+            
+            "left_shoulder_pitch_joint": -0.754599,
+            "left_shoulder_roll_joint": 0.550010,
+            "left_shoulder_yaw_joint": -0.399298,
+            "left_elbow_joint": 0.278886,
+            "left_wrist_roll_joint": 0.320559,
+            "left_wrist_pitch_joint": -0.203525,
+            "left_wrist_yaw_joint": -0.387435,
+
+            "right_shoulder_pitch_joint": -0.340858,
+            "right_shoulder_roll_joint": -0.186152,
+            "right_shoulder_yaw_joint": 0.015023,
+            "right_elbow_joint": -0.777159,
+            "right_wrist_roll_joint": 0.019805,
+            "right_wrist_pitch_joint": 1.182285,
+            "right_wrist_yaw_joint": -0.022848,
         }
     
     @classmethod
@@ -105,22 +122,39 @@ class RobotJointTemplates:
         elif hand_type == "dex3":
             return {
                 # dexterous hand joint - left hand
-                "left_hand_index_0_joint": 0.0,
-                "left_hand_middle_0_joint": 0.0,
+                "left_hand_index_0_joint": -60.0 * np.pi / 180.0,
+                "left_hand_middle_0_joint": -60.0 * np.pi / 180.0,
                 "left_hand_thumb_0_joint": 0.0,
-                "left_hand_index_1_joint": 0.0,
-                "left_hand_middle_1_joint": 0.0,
+                "left_hand_index_1_joint": -40.0 * np.pi / 180.0,
+                "left_hand_middle_1_joint": -40.0 * np.pi / 180.0,
                 "left_hand_thumb_1_joint": 0.0,
                 "left_hand_thumb_2_joint": 0.0,
                 
                 # dexterous hand joint - right hand
-                "right_hand_index_0_joint": 0.0,
-                "right_hand_middle_0_joint": 0.0,
+                "right_hand_index_0_joint": 60.0 * np.pi / 180.0,
+                "right_hand_middle_0_joint": 60.0 * np.pi / 180.0,
                 "right_hand_thumb_0_joint": 0.0,
-                "right_hand_index_1_joint": 0.0,
-                "right_hand_middle_1_joint": 0.0,
+                "right_hand_index_1_joint": 40.0 * np.pi / 180.0,
+                "right_hand_middle_1_joint": 40.0 * np.pi / 180.0,
                 "right_hand_thumb_1_joint": 0.0,
                 "right_hand_thumb_2_joint": 0.0,
+                # # dexterous hand joint - left hand
+                # "left_hand_index_0_joint": 0.0,
+                # "left_hand_middle_0_joint": 0.0,
+                # "left_hand_thumb_0_joint": 0.0,
+                # "left_hand_index_1_joint": 0.0,
+                # "left_hand_middle_1_joint": 0.0,
+                # "left_hand_thumb_1_joint": 0.0,
+                # "left_hand_thumb_2_joint": 0.0,
+                
+                # # dexterous hand joint - right hand
+                # "right_hand_index_0_joint": 0.0,
+                # "right_hand_middle_0_joint": 0.0,
+                # "right_hand_thumb_0_joint": 0.0,
+                # "right_hand_index_1_joint": 0.0,
+                # "right_hand_middle_1_joint": 0.0,
+                # "right_hand_thumb_1_joint": 0.0,
+                # "right_hand_thumb_2_joint": 0.0,
             }
         elif hand_type == "inspire":
             return {

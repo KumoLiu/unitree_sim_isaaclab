@@ -93,6 +93,10 @@ joint_names = [
 "right_hand_index_1_joint",
 ]
 
+offset_dict = {
+    "left_elbow_joint": -0.3,
+    "right_elbow_joint": -0.3,
+}
 ##
 # MDP settings
 ##
@@ -100,7 +104,9 @@ joint_names = [
 class ActionsCfg:
     """defines the action configuration related to robot control, using direct joint angle control
     """
-    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=joint_names, scale=1.0, use_default_offset=True, preserve_order=True)
+    # joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=joint_names, scale=1.0, use_default_offset=True, preserve_order=True)
+    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=joint_names, scale=1.0, use_default_offset=False, offset=offset_dict, preserve_order=True)
+    # joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=1.0, use_default_offset=False, offset=offset_dict)
     # joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=1.0, use_default_offset=True)
 
 
@@ -272,9 +278,11 @@ class PickPlaceG129DEX3JointEnvCfg(ManagerBasedRLEnvCfg):
                                                      )
     # 2. viewer settings
     viewer: ViewerCfg = ViewerCfg(
-        eye=(-1.9, 1.90, 1.20101),
-        lookat=(-1.2, 1.9, 0.6),
-        cam_prim_path="/OmniverseKit_Persp",
+        # eye=(-1.9, 1.90, 1.20101),
+        # lookat=(-1.2, 1.9, 0.6),
+        # Default viewport camera: use the robot's front camera.
+        # Note: ViewerCfg expects a concrete prim path, so we point to env_0 (this task uses num_envs=1).
+        cam_prim_path="/World/envs/env_0/Robot/d435_link/front_cam",
     )
     # basic settings
     observations: ObservationsCfg = ObservationsCfg()   # observation configuration
@@ -307,6 +315,9 @@ class PickPlaceG129DEX3JointEnvCfg(ManagerBasedRLEnvCfg):
             "/rtx/raytracing/fractionalCutoutOpacity", 
             True
         )
+        self.sim.render.rendering_mode = "quality"
+        self.sim.render.antialiasing_mode = "DLAA"
+
 
 
         # create event manager

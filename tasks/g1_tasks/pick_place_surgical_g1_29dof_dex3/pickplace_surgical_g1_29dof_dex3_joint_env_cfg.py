@@ -100,7 +100,8 @@ joint_names = [
 class ActionsCfg:
     """defines the action configuration related to robot control, using direct joint angle control
     """
-    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=joint_names, scale=1.0, use_default_offset=True, preserve_order=True)
+    # joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=joint_names, scale=1.0, use_default_offset=True, preserve_order=True)
+    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=1.0, use_default_offset=True)
 
 
 
@@ -116,9 +117,9 @@ class ObservationsCfg:
         """
 
         # 1. robot joint state observation
-        robot_joint_state = ObsTerm(func=mdp.get_robot_boy_joint_states, params={"enable_dds": False})
+        robot_joint_state = ObsTerm(func=mdp.get_robot_boy_joint_states, params={"enable_dds": True})
         # 2. gripper joint state observation 
-        robot_gipper_state = ObsTerm(func=mdp.get_robot_dex3_joint_states, params={"enable_dds": False})
+        robot_gipper_state = ObsTerm(func=mdp.get_robot_dex3_joint_states, params={"enable_dds": True})
 
         # 3. camera image observation
         camera_image = ObsTerm(func=mdp.get_camera_image)
