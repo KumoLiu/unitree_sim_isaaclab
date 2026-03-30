@@ -3,17 +3,18 @@
 """Configuration for Unitree robots."""
 
 import isaaclab.sim as sim_utils
-from isaaclab.actuators import ActuatorNetMLPCfg, DCMotorCfg, ImplicitActuatorCfg
+from isaaclab.actuators import ActuatorNetMLPCfg, DCMotorCfg, ImplicitActuatorCfg, IdealPDActuatorCfg
 from isaaclab.assets.articulation import ArticulationCfg
 from isaaclab.utils.assets import ISAACLAB_NUCLEUS_DIR
 import os
 project_root = os.environ.get("PROJECT_ROOT")
-G129_CFG_WITH_DEX3_BASE_FIX = ArticulationCfg(
+G129_CFG_WITH_DEX3_BASE_FIX_UNITREE = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{project_root}/assets/robots/g1-29dof-dex3-base-fix-usd/g1_29dof_with_dex3_base_fix.usd",
+        # usd_path=f"{project_root}/assets/robots/g1-29dof-dex3-base-fix-usd/g1_29dof_with_dex3_base_fix.usd",
+        usd_path="/home/nvidia/workspace/yunl/assets/lw_v3/robots/g1_29dof_with_dex3_base_fix.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
-            disable_gravity=False,
+            disable_gravity=True,
             retain_accelerations=False,
             linear_damping=0.0,
             angular_damping=0.0,
@@ -52,11 +53,10 @@ G129_CFG_WITH_DEX3_BASE_FIX = ArticulationCfg(
             "waist_roll_joint": 0.0,
             "waist_pitch_joint": 0.0,
             
-            # arms joints
             "left_shoulder_pitch_joint": 0.0,
             "left_shoulder_roll_joint": 0.0,
             "left_shoulder_yaw_joint": 0.0,
-            "left_elbow_joint": 0.0,
+            "left_elbow_joint": -0.3,
             "left_wrist_roll_joint": 0.0,
             "left_wrist_pitch_joint": 0.0,
             "left_wrist_yaw_joint": 0.0,
@@ -64,7 +64,7 @@ G129_CFG_WITH_DEX3_BASE_FIX = ArticulationCfg(
             "right_shoulder_pitch_joint": 0.0,
             "right_shoulder_roll_joint": 0.0,
             "right_shoulder_yaw_joint": 0.0,
-            "right_elbow_joint": 0.0,
+            "right_elbow_joint": -0.3,
             "right_wrist_roll_joint": 0.0,
             "right_wrist_pitch_joint": 0.0,
             "right_wrist_yaw_joint": 0.0,
@@ -137,7 +137,7 @@ G129_CFG_WITH_DEX3_BASE_FIX = ArticulationCfg(
                 ".*_elbow_joint",
                 ".*_wrist_.*_joint"
             ],
-            effort_limit=None,
+            effort_limit=5,
             velocity_limit=None,
              stiffness={  # increase the stiffness (kp)
                  ".*_shoulder_.*_joint": 300.0,
@@ -145,10 +145,22 @@ G129_CFG_WITH_DEX3_BASE_FIX = ArticulationCfg(
                  ".*_wrist_.*_joint": 400.0,
             },
              damping={    # increase the damping (kd)
-                 ".*_shoulder_.*_joint": 3.0,
-                 ".*_elbow_joint": 2.5,
-                 ".*_wrist_.*_joint": 2.5,
+                 ".*_shoulder_.*_joint": 30.0,
+                 ".*_elbow_joint": 25.0,
+                 ".*_wrist_.*_joint": 25.0,
              },
+            # lw setting:
+            # velocity_limit=10,
+            # stiffness={  # increase the stiffness (kp)
+            #      ".*_shoulder_.*_joint": 400.0,
+            #      ".*_elbow_joint": 400.0,
+            #      ".*_wrist_.*_joint": 400.0,
+            # },
+            # damping={    # increase the damping (kd)
+            #      ".*_shoulder_.*_joint": 80.0,
+            #      ".*_elbow_joint": 80.0,
+            #      ".*_wrist_.*_joint": 80.0,
+            #  },
             armature=None,
         ),
         "hands": ImplicitActuatorCfg(
@@ -157,7 +169,7 @@ G129_CFG_WITH_DEX3_BASE_FIX = ArticulationCfg(
                 ".*_hand_middle_.*_joint",
                 ".*_hand_thumb_.*_joint"
             ],
-            effort_limit=300,
+            effort_limit=10,
             velocity_limit=100.0,
             stiffness={
                 ".*": 100.0,
@@ -172,6 +184,220 @@ G129_CFG_WITH_DEX3_BASE_FIX = ArticulationCfg(
     },
 )
 
+G129_CFG_WITH_DEX3_BASE_FIX = ArticulationCfg(
+        spawn=sim_utils.UsdFileCfg(
+            usd_path="/home/nvidia/workspace/yunl/assets/lw_v3/robots/g1_29dof_with_dex3_base_fix.usd",
+            activate_contact_sensors=True,
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                disable_gravity=False,
+                retain_accelerations=False,
+                linear_damping=0.0,
+                angular_damping=0.0,
+                max_linear_velocity=1000.0,
+                max_angular_velocity=1000.0,
+                max_depenetration_velocity=1.0,
+                solver_position_iteration_count=4,
+                solver_velocity_iteration_count=0,
+            ),
+            articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+                enabled_self_collisions=False, solver_position_iteration_count=4, solver_velocity_iteration_count=0
+            ),
+        ),
+        prim_path="/World/envs/env_.*/Robot",
+        init_state=ArticulationCfg.InitialStateCfg(
+            pos=(0.0, 0.0, 0.75),
+            joint_pos={
+                # legs joints
+                "left_hip_yaw_joint": 0.0,
+                "left_hip_roll_joint": 0.0,
+                "left_hip_pitch_joint": -0.05,
+                "left_knee_joint": 0.2,
+                "left_ankle_pitch_joint": -0.15,
+                "left_ankle_roll_joint": 0.0,
+                
+                "right_hip_yaw_joint": 0.0,
+                "right_hip_roll_joint": 0.0,
+                "right_hip_pitch_joint": -0.05,
+                "right_knee_joint": 0.2,
+                "right_ankle_pitch_joint": -0.15,
+                "right_ankle_roll_joint": 0.0,
+                
+                # waist joints
+                "waist_yaw_joint": 0.0,
+                "waist_roll_joint": 0.0,
+                "waist_pitch_joint": 0.0,
+                
+                # "left_shoulder_pitch_joint": 0.0,
+                # "left_shoulder_roll_joint": 0.0,
+                # "left_shoulder_yaw_joint": 0.0,
+                # "left_elbow_joint": -0.3,
+                # "left_wrist_roll_joint": 0.0,
+                # "left_wrist_pitch_joint": 0.0,
+                # "left_wrist_yaw_joint": 0.0,
+                
+                # "right_shoulder_pitch_joint": 0.0,
+                # "right_shoulder_roll_joint": 0.0,
+                # "right_shoulder_yaw_joint": 0.0,
+                # "right_elbow_joint": -0.3,
+                # "right_wrist_roll_joint": 0.0,
+                # "right_wrist_pitch_joint": 0.0,
+                # "right_wrist_yaw_joint": 0.0,
+                
+                # # fingers joints
+                # "left_hand_index_0_joint": 0.0,
+                # "left_hand_middle_0_joint": 0.0,
+                # "left_hand_thumb_0_joint": 0.0,
+                # "left_hand_index_1_joint": 0.0,
+                # "left_hand_middle_1_joint": 0.0,
+                # "left_hand_thumb_1_joint": 0.0,
+                # "left_hand_thumb_2_joint": 0.0,
+                
+                # "right_hand_index_0_joint": 0.0,
+                # "right_hand_middle_0_joint": 0.0,
+                # "right_hand_thumb_0_joint": 0.0,
+                # "right_hand_index_1_joint": 0.0,
+                # "right_hand_middle_1_joint": 0.0,
+                # "right_hand_thumb_1_joint": 0.0,
+                # "right_hand_thumb_2_joint": 0.0,
+            },
+            joint_vel={".*": 0.0},
+        ),
+        soft_joint_pos_limit_factor=0.9,
+        actuators={
+            "legs": IdealPDActuatorCfg(
+                joint_names_expr=[
+                    ".*_hip_yaw_joint",
+                    ".*_hip_roll_joint",
+                    ".*_hip_pitch_joint",
+                    ".*_knee_joint",
+                ],
+                effort_limit={
+                    ".*_hip_yaw_joint": 88.0,
+                    ".*_hip_roll_joint": 88.0,
+                    ".*_hip_pitch_joint": 88.0,
+                    ".*_knee_joint": 139.0,
+                },
+                velocity_limit={
+                    ".*_hip_yaw_joint": 32.0,
+                    ".*_hip_roll_joint": 32.0,
+                    ".*_hip_pitch_joint": 32.0,
+                    ".*_knee_joint": 20.0,
+                },
+                stiffness={
+                    ".*_hip_yaw_joint": 150.0,
+                    ".*_hip_roll_joint": 150.0,
+                    ".*_hip_pitch_joint": 150.0,
+                    ".*_knee_joint": 300.0,
+                },
+                damping={
+                    ".*_hip_yaw_joint": 2.0,
+                    ".*_hip_roll_joint": 2.0,
+                    ".*_hip_pitch_joint": 2.0,
+                    ".*_knee_joint": 4.0,
+                },
+                armature={
+                    ".*_hip_.*": 0.03,
+                    ".*_knee_joint": 0.03,
+                },
+            ),
+            "feet": IdealPDActuatorCfg(
+                joint_names_expr=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"],
+                stiffness={
+                    ".*_ankle_pitch_joint": 40.0,
+                    ".*_ankle_roll_joint": 40.0,
+                },
+                damping={
+                    ".*_ankle_pitch_joint": 2,
+                    ".*_ankle_roll_joint": 2,
+                },
+                effort_limit={
+                    ".*_ankle_pitch_joint": 50.0,
+                    ".*_ankle_roll_joint": 50.0,
+                },
+                velocity_limit={
+                    ".*_ankle_pitch_joint": 37.0,
+                    ".*_ankle_roll_joint": 37.0,
+                },
+                armature=0.03,
+                friction=0.03,
+            ),
+            "waist": ImplicitActuatorCfg(
+                joint_names_expr=[
+                    "waist_yaw_joint",
+                    "waist_roll_joint",
+                    "waist_pitch_joint"
+                ],  
+                effort_limit=1000.0,  # set a large torque limit
+                velocity_limit=0.0,   # set the velocity limit to 0
+                stiffness={
+                    "waist_yaw_joint": 10000.0,
+                    "waist_roll_joint": 10000.0,
+                    "waist_pitch_joint": 10000.0
+                },
+                damping={
+                    "waist_yaw_joint": 10000.0,
+                    "waist_roll_joint": 10000.0,
+                    "waist_pitch_joint": 10000.0
+                },
+                armature=None,
+            ),
+            "arms": IdealPDActuatorCfg(
+                joint_names_expr=[
+                    ".*_shoulder_pitch_joint",
+                    ".*_shoulder_roll_joint",
+                    ".*_shoulder_yaw_joint",
+                    ".*_elbow_joint",
+                    ".*_wrist_.*_joint",
+                ],
+                effort_limit={
+                    ".*_shoulder_pitch_joint": 25.0,
+                    ".*_shoulder_roll_joint": 25.0,
+                    ".*_shoulder_yaw_joint": 25.0,
+                    ".*_elbow_joint": 25.0,
+                    ".*_wrist_roll_joint": 25.0,
+                    ".*_wrist_pitch_joint": 5.0,
+                    ".*_wrist_yaw_joint": 5.0,
+                },
+                velocity_limit={
+                    ".*_shoulder_pitch_joint": 37.0,
+                    ".*_shoulder_roll_joint": 37.0,
+                    ".*_shoulder_yaw_joint": 37.0,
+                    ".*_elbow_joint": 37.0,
+                    ".*_wrist_roll_joint": 37.0,
+                    ".*_wrist_pitch_joint": 22.0,
+                    ".*_wrist_yaw_joint": 22.0,
+                },
+                stiffness={
+                    ".*_shoulder_pitch_joint": 100.0,
+                    ".*_shoulder_roll_joint": 100.0,
+                    ".*_shoulder_yaw_joint": 40.0,
+                    ".*_elbow_joint": 40.0,
+                    ".*_wrist_.*_joint": 20.0,
+                },
+                damping={
+                    ".*_shoulder_pitch_joint": 15.0,  
+                    ".*_shoulder_roll_joint": 15.0,
+                    ".*_shoulder_yaw_joint": 8.0,
+                    ".*_elbow_joint": 8.0,
+                    ".*_wrist_.*_joint": 4.0,
+                },
+                armature={".*_shoulder_.*": 0.03, ".*_elbow_.*": 0.03, ".*_wrist_.*_joint": 0.03},
+                friction=0.03,
+            ),
+            # NOTE(peterd, 9/25/2025): The follow hand joint values are tested and working with Leapmotion and Mimic
+            "hands": IdealPDActuatorCfg(
+                joint_names_expr=[
+                    ".*_hand_.*",
+                ],
+                effort_limit=5.0,
+                velocity_limit=10.0,
+                stiffness=8.0,     
+                damping=1.5,       
+                armature=0.03,
+                friction=0.5,      
+            ),
+        },
+    )
 
 
 
@@ -181,10 +407,10 @@ G129_CFG_WITH_DEX1_BASE_FIX = ArticulationCfg(
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
-            retain_accelerations=False,
+            retain_accelerations=True,  # 启用加速度计算 (Enable acceleration computation)
             linear_damping=0.0,
             angular_damping=0.0,
-            max_linear_velocity=1000.0,
+            max_linear_velocity=100.0,
             max_angular_velocity=1000.0,
             max_depenetration_velocity=1.0,
         ),
@@ -292,17 +518,17 @@ G129_CFG_WITH_DEX1_BASE_FIX = ArticulationCfg(
                 ".*_elbow_joint",
                 ".*_wrist_.*_joint"
             ],
-            effort_limit=None,
-            velocity_limit=None,
+            effort_limit=20,
+            velocity_limit=10,
             stiffness={  # increase the stiffness (kp)
-                 ".*_shoulder_.*_joint": 25.0,
-                 ".*_elbow_joint": 50.0,
-                 ".*_wrist_.*_joint": 40.0,
+                 ".*_shoulder_.*_joint": 250.0,
+                 ".*_elbow_joint": 500.0,
+                 ".*_wrist_.*_joint": 400.0,
             },
              damping={    # increase the damping (kd)
-                 ".*_shoulder_.*_joint": 2.0,
-                 ".*_elbow_joint": 2.0,
-                 ".*_wrist_.*_joint": 2.0,
+                 ".*_shoulder_.*_joint": 20.0,
+                 ".*_elbow_joint": 20.0,
+                 ".*_wrist_.*_joint": 20.0,
              },
             armature=None,
         ),
@@ -313,10 +539,10 @@ G129_CFG_WITH_DEX1_BASE_FIX = ArticulationCfg(
                 "right_hand_Joint1_1",
                 "right_hand_Joint2_1",
             ],
-            effort_limit=None,  # increase the torque limit
-            velocity_limit=None,  # set the velocity limit to 0
-            stiffness=800.0,    # increase the stiffness (kp)
-            damping=3.0,        # increase the damping (kd)
+            effort_limit=10,  # increase the torque limit
+            velocity_limit=5,  # set the velocity limit to 0
+            stiffness=500.0,    # increase the stiffness (kp)
+            damping=10.0,        # increase the damping (kd)
             friction=200.0,
             armature=None,
         ),
@@ -332,7 +558,7 @@ G129_CFG_WITH_INSPIRE_HAND = ArticulationCfg(
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
-            retain_accelerations=False,
+            retain_accelerations=True,  # 启用加速度计算 (Enable acceleration computation)
             linear_damping=0.0,
             angular_damping=0.0,
             max_linear_velocity=1000.0,
@@ -539,7 +765,7 @@ G129_CFG_WITH_DEX1_WHOLEBODY = ArticulationCfg(
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
-            retain_accelerations=False,
+            retain_accelerations=True,  # 启用加速度计算 (Enable acceleration computation)
             linear_damping=0.0,
             angular_damping=0.0,
             max_linear_velocity=1000.0,
@@ -687,10 +913,10 @@ G129_CFG_WITH_DEX1_WHOLEBODY = ArticulationCfg(
                 "right_hand_Joint1_1",
                 "right_hand_Joint2_1",
             ],
-            effort_limit=None,  # increase the torque limit
-            velocity_limit=None,  # set the velocity limit to 0
-            stiffness=800.0,    # increase the stiffness (kp)
-            damping=3.0,        # increase the damping (kd)
+            effort_limit=10,  # increase the torque limit
+            velocity_limit=10,  # set the velocity limit to 0
+            stiffness=500.0,    # increase the stiffness (kp)
+            damping=10.0,        # increase the damping (kd)
             friction=200.0,
             armature=None,
         ),
@@ -704,7 +930,7 @@ G129_CFG_WITH_DEX3_WHOLEBODY = ArticulationCfg(
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
-            retain_accelerations=False,
+            retain_accelerations=True,  # 启用加速度计算 (Enable acceleration computation)
             linear_damping=0.0,
             angular_damping=0.0,
             max_linear_velocity=1000.0,
@@ -885,7 +1111,7 @@ G129_CFG_WITH_INSPIRE_WHOLEBODY = ArticulationCfg(
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
-            retain_accelerations=False,
+            retain_accelerations=True,  # 启用加速度计算 (Enable acceleration computation)
             linear_damping=0.0,
             angular_damping=0.0,
             max_linear_velocity=1000.0,
@@ -1112,7 +1338,7 @@ H12_CFG_WITH_INSPIRE_HAND = ArticulationCfg(
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
-            retain_accelerations=False,
+            retain_accelerations=True,  # 启用加速度计算 (Enable acceleration computation)
             linear_damping=0.0,
             angular_damping=0.0,
             max_linear_velocity=1000.0,

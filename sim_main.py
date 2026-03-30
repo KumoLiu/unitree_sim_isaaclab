@@ -13,9 +13,15 @@ import contextlib
 import time
 import sys
 import signal
+import threading
+import termios
+import tty
+import select
 import torch
 import gymnasium as gym
 from pathlib import Path
+import cv2
+import numpy as np
 
 # Isaac Lab AppLauncher
 from isaaclab.app import AppLauncher
@@ -331,6 +337,16 @@ def main():
         print("\n")
         print("***  Running without GUI; rendering handled offscreen. ***")
         print("\n")
+    
+    # Print keyboard controls
+    print("=" * 60)
+    print("⌨️  Keyboard Controls:")
+    print("  [r] - Reset environment")
+    print("  [1] - Reset object")
+    print("  [2] - Reset all")
+    print("  [s] - Save front camera image to ./saved_images/")
+    print("=" * 60)
+    print()
     # reset environment
     if args_cli.modify_light:
         update_light(
@@ -434,6 +450,18 @@ def main():
     else:
         setup_signal_handlers(controller)
     print("Note: The DDS in Sim transmits messages on channel 1. Please ensure that other DDS instances use the same channel for message exchange by setting: ChannelFactoryInitialize(1).")
+    # Setup non-blocking keyboard polling (r: env.reset, 1: reset_object_self, 2: reset_all_self)
+    kb_fd = sys.stdin.fileno()
+    kb_old_settings = termios.tcgetattr(kb_fd)
+    tty.setcbreak(kb_fd)
+
+    def poll_key_nonblocking():
+        dr, _, _ = select.select([sys.stdin], [], [], 0)
+        if dr:
+            ch = sys.stdin.read(1)
+            return ch
+        return None
+
     try:
         # start controller - start asynchronous components
         print("========= start controller =========")
@@ -455,6 +483,68 @@ def main():
             while simulation_app.is_running() and controller.is_running:
                 current_time = time.time()
                 loop_count += 1
+                # Keyboard controls
+                try:
+                    key = poll_key_nonblocking()
+                    if key == 'r':
+                        print("[kb] reset env")
+                        env.sim.reset()
+                        env.reset()
+                        env_cfg.event_manager.trigger("reset_task_stage", env)
+                    elif key == '1':
+                        try:
+                            print("[kb] reset_object_self event")
+                            env_cfg.event_manager.trigger("reset_object_self", env)
+                        except Exception as e:
+                            print(f"[kb] reset_object_self failed: {e}")
+                    elif key == '2':
+                        try:
+                            print("[kb] reset_all_self event")
+                            env_cfg.event_manager.trigger("reset_all_self", env)
+                        except Exception as e:
+                            print(f"[kb] reset_all_self failed: {e}")
+                    elif key == 's':
+                        try:
+                            print("[kb] saving front camera image...")
+                            
+                            # Get front camera
+                            if "front_camera" in env.scene.keys():
+                                front_camera = env.scene["front_camera"]
+                                rgb_image = front_camera.data.output["rgb"]
+                                
+                                # Get first environment's image
+                                img = rgb_image[0]
+                                
+                                # Convert to numpy
+                                if img.device.type != 'cpu':
+                                    img_np = img.cpu().numpy()
+                                else:
+                                    img_np = img.numpy()
+                                
+                                # Ensure uint8 format
+                                if img_np.dtype == np.float32 or img_np.dtype == np.float64:
+                                    img_np = (img_np * 255).astype(np.uint8)
+                                
+                                # Convert RGB to BGR for OpenCV
+                                img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+                                
+                                # Save image with timestamp
+                                save_dir = Path("./saved_images")
+                                save_dir.mkdir(exist_ok=True)
+                                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                                filename = save_dir / f"front_camera_{timestamp}_step{loop_count}.png"
+                                cv2.imwrite(str(filename), img_bgr)
+                                print(f"[kb] ✅ Saved front camera image to: {filename}")
+                                print(f"[kb]    Image shape: {img_bgr.shape}")
+                            else:
+                                print(f"[kb] ❌ front_camera not found in scene. Available: {list(env.scene.keys())}")
+                        except Exception as e:
+                            print(f"[kb] save camera image failed: {e}")
+                            import traceback
+                            traceback.print_exc()
+                except Exception as e:
+                    # ignore keyboard errors to keep loop running
+                    pass
                 if not args_cli.replay_data:
                     try:
                         env_state = env.scene.get_state()
@@ -579,6 +669,11 @@ def main():
     finally:
         # clean up resources
         print("\nclean up resources...")
+        # restore terminal settings
+        try:
+            termios.tcsetattr(kb_fd, termios.TCSADRAIN, kb_old_settings)
+        except Exception:
+            pass
         controller.cleanup()
         
         env.close()

@@ -34,8 +34,9 @@ class RobotController:
         self._step_interval = 1.0 / config.step_hz
         self._last_step_time = 0.0
         
-        all_joint_names = env.scene["robot"].data.joint_names
-        self._last_action = torch.zeros(len(all_joint_names), device=env.device)
+        # Fallback action: keep robot at its configured default joint pose.
+        # This avoids "snap back to zeros" when the action provider has no fresh command yet.
+        self._last_action = env.scene["robot"].data.default_joint_pos.clone().to(env.device)
         
         
         # pre-calculate the sleep threshold (avoid calculating every time)
