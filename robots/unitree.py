@@ -30,6 +30,7 @@ G129_CFG_WITH_DEX3_BASE_FIX = ArticulationCfg(
 
     ),
     init_state=ArticulationCfg.InitialStateCfg(
+        rot=(0.0, 0.0, 0.0, 1.0),
         pos=(0.0, 0.0, 0.75),
         joint_pos={
             # legs joints
@@ -197,6 +198,7 @@ G129_CFG_WITH_DEX1_BASE_FIX = ArticulationCfg(
     ),
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.0, 0.0, 0.75),
+        rot=(1.0, 0.0, 0.0, 0.0),
         joint_pos={
             # legs joints
             "left_hip_yaw_joint": 0.0,

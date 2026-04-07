@@ -82,6 +82,7 @@ def get_robot_arm_joint_names() -> list[str]:
 
 # global variable to cache the DDS instance
 from dds.dds_master import dds_manager
+from tasks.utils.warp_utils import to_torch  # Isaac Lab 3.0: wp.array -> torch
 _g1_robot_dds = None
 _dds_initialized = False
 
@@ -148,9 +149,9 @@ def get_robot_boy_joint_states(
         - the last 29 elements are joint torques
     """
     # get all joint states
-    joint_pos = env.scene["robot"].data.joint_pos
-    joint_vel = env.scene["robot"].data.joint_vel
-    joint_torque = env.scene["robot"].data.applied_torque  # use applied_torque to get joint torques
+    joint_pos = to_torch(env.scene["robot"].data.joint_pos)
+    joint_vel = to_torch(env.scene["robot"].data.joint_vel)
+    joint_torque = to_torch(env.scene["robot"].data.applied_torque)  # use applied_torque to get joint torques
     device = joint_pos.device
     batch = joint_pos.shape[0]
 
@@ -224,8 +225,8 @@ def get_gravity_quaternion_from_root_state(env: ManagerBasedRLEnv):
     imu_torso_idx = body_names.index("imu_in_torso")
     print(f"imu_pelvis_idx: {imu_pelvis_idx}")
     print(f"imu_torso_idx: {imu_torso_idx}")
-    pose = env.scene["robot"].data.body_link_pose_w  # [num_links, 7] (pos + quat)
-    vel = env.scene["robot"].data.body_link_vel_w    # [num_links, 6] (lin_vel + ang_vel)
+    pose = to_torch(env.scene["robot"].data.body_link_pose_w)  # [num_links, 7] (pos + quat)
+    vel = to_torch(env.scene["robot"].data.body_link_vel_w)    # [num_links, 6] (lin_vel + ang_vel)
 
     # 取出IMU位置+旋转
     pelvis_pose = pose[:, imu_pelvis_idx, :]  # [B, 7]
@@ -252,7 +253,7 @@ def get_robot_imu_data(
         - the last 3 elements are angular velocity
     """
     # get the robot root state
-    root_state = env.scene["robot"].data.root_state_w
+    root_state = to_torch(env.scene["robot"].data.root_state_w)
     # print(env.scene["robot"].data.__dict__.keys())
     # pelvis_pose, pelvis_vel, torso_pose, torso_vel = get_gravity_quaternion_from_root_state(env)
     # print(f"pelvis_pose: {pelvis_pose}")

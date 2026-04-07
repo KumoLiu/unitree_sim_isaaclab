@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from isaaclab.assets import RigidObject
 from isaaclab.managers import SceneEntityCfg
+from tasks.utils.warp_utils import to_torch  # Isaac Lab 3.0: wp.array -> torch
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
@@ -32,17 +33,17 @@ def reset_object_estimate(
     
     # Extract wheel position relative to environment origin
     # 2. get object position
-    red_block_x = red_block.data.root_pos_w[:, 0]         # x position
-    red_block_y = red_block.data.root_pos_w[:, 1]        # y position
-    red_block_height = red_block.data.root_pos_w[:, 2]   # z position (height)
+    red_block_x = to_torch(red_block.data.root_pos_w)[:, 0]         # x position
+    red_block_y = to_torch(red_block.data.root_pos_w)[:, 1]        # y position
+    red_block_height = to_torch(red_block.data.root_pos_w)[:, 2]   # z position (height)
 
-    yellow_block_x = yellow_block.data.root_pos_w[:, 0]         # x position
-    yellow_block_y = yellow_block.data.root_pos_w[:, 1]        # y position
-    yellow_block_height = yellow_block.data.root_pos_w[:, 2]   # z position (height)
+    yellow_block_x = to_torch(yellow_block.data.root_pos_w)[:, 0]         # x position
+    yellow_block_y = to_torch(yellow_block.data.root_pos_w)[:, 1]        # y position
+    yellow_block_height = to_torch(yellow_block.data.root_pos_w)[:, 2]   # z position (height)
 
-    green_block_x = green_block.data.root_pos_w[:, 0]         # x position
-    green_block_y = green_block.data.root_pos_w[:, 1]        # y position
-    green_block_height = green_block.data.root_pos_w[:, 2]   # z position (height)
+    green_block_x = to_torch(green_block.data.root_pos_w)[:, 0]         # x position
+    green_block_y = to_torch(green_block.data.root_pos_w)[:, 1]        # y position
+    green_block_height = to_torch(green_block.data.root_pos_w)[:, 2]   # z position (height)
     
     red_done_x = (red_block_x < max_x) and  (red_block_x > min_x)
     red_done_y = (red_block_y < max_y) and (red_block_y > min_y)

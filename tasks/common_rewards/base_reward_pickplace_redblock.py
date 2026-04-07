@@ -15,6 +15,7 @@ _rewards_dds = None
 _dds_initialized = False
 import sys
 import os
+from tasks.utils.warp_utils import to_torch  # Isaac Lab 3.0: wp.array -> torch
 def _get_rewards_dds_instance():
     """get the DDS instance, delay initialization"""
     global _rewards_dds, _dds_initialized
@@ -73,9 +74,9 @@ def compute_reward(
     object: RigidObject = env.scene[object_cfg.name]
     
     # 2. get object position
-    wheel_x = object.data.root_pos_w[:, 0]         # x position
-    wheel_y = object.data.root_pos_w[:, 1]        # y position
-    wheel_height = object.data.root_pos_w[:, 2]   # z position (height)
+    wheel_x = to_torch(object.data.root_pos_w)[:, 0]         # x position
+    wheel_y = to_torch(object.data.root_pos_w)[:, 1]        # y position
+    wheel_height = to_torch(object.data.root_pos_w)[:, 2]   # z position (height)
 
     # element-wise operations
     done_x = (wheel_x < max_x) & (wheel_x > min_x)

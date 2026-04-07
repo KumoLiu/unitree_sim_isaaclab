@@ -24,6 +24,7 @@ from tasks.common_event.event_manager import SimpleEvent, SimpleEventManager, Ba
 
 # import public scene configuration
 from tasks.common_scene.base_scene_stack_rgyblock import TableRedGreenYellowBlockSceneCfg
+from tasks.utils.ensure_sim_physics import ensure_sim_has_physx_cfg  # isort: skip
 
 ##
 # Scene definition
@@ -40,7 +41,7 @@ class ObjectTableSceneCfg(TableRedGreenYellowBlockSceneCfg):
     # Humanoid robot w/ arms higher
     # 5. humanoid robot configuration 
     robot: ArticulationCfg = G1RobotPresets.g1_29dof_dex1_base_fix(init_pos=(-4.2, -3.7, 0.76),
-        init_rot=(0.7071, 0, 0, -0.7071))
+        init_rot=(0.0, 0.0, -0.7071, 0.7071))
 
 
     # 6. add camera configuration 
@@ -166,23 +167,21 @@ class StackRgyBlockG129DEX1BaseFixEnvCfg(ManagerBasedRLEnvCfg):
     curriculum = None # curriculum manager
     def __post_init__(self):
         """Post initialization."""
+        ensure_sim_has_physx_cfg(self.sim)
         # general settings
         self.decimation = 2
         self.episode_length_s = 20.0
         # simulation settings
         self.sim.dt = 0.005
         self.sim.render_interval = self.decimation
-        self.sim.physx.bounce_threshold_velocity = 0.01
-        self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
-        self.sim.physx.gpu_total_aggregate_pairs_capacity = 32 * 1024
-        self.sim.physx.friction_correlation_distance = 0.003
-        self.sim.physx.enable_ccd = True
-        self.sim.physx.gpu_constraint_solver_heavy_spring_enabled = True
-        self.sim.physx.num_substeps = 2
-        self.sim.physx.contact_offset = 0.015
-        self.sim.physx.rest_offset = 0.001
-        self.sim.physx.num_position_iterations = 12
-        self.sim.physx.num_velocity_iterations = 4
+        self.sim.physics.bounce_threshold_velocity = 0.01
+        self.sim.physics.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
+        self.sim.physics.gpu_total_aggregate_pairs_capacity = 32 * 1024
+        self.sim.physics.friction_correlation_distance = 0.003
+        self.sim.physics.enable_ccd = True
+        self.sim.physics.min_position_iteration_count = 12
+        self.sim.physics.max_position_iteration_count = 12
+        self.sim.physics.max_velocity_iteration_count = 4
         # create event manager
         self.event_manager = SimpleEventManager() 
 

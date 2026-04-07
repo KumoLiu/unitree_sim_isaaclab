@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from isaaclab.assets import RigidObject
 from isaaclab.managers import SceneEntityCfg
+from tasks.utils.warp_utils import to_torch  # Isaac Lab 3.0: wp.array -> torch
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
@@ -28,9 +29,9 @@ def reset_object_estimate(
     
     # Extract wheel position relative to environment origin
     # 2. get object position
-    wheel_x = object.data.root_pos_w[:, 0]         # x position
-    wheel_y = object.data.root_pos_w[:, 1]        # y position
-    wheel_height = object.data.root_pos_w[:, 2]   # z position (height)
+    wheel_x = to_torch(object.data.root_pos_w)[:, 0]         # x position
+    wheel_y = to_torch(object.data.root_pos_w)[:, 1]        # y position
+    wheel_height = to_torch(object.data.root_pos_w)[:, 2]   # z position (height)
     done_x = (wheel_x < max_x) and  (wheel_x > min_x)
     done_y = (wheel_y < max_y) and (wheel_y > min_y)
     done_height = (wheel_height > min_height)

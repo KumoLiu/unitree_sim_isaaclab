@@ -3,6 +3,7 @@
 from action_provider.action_base import ActionProvider
 from typing import Optional
 import torch
+from tasks.utils.warp_utils import to_torch
 from tools.data_json_load import load_robot_data
 from image_server.shared_memory_utils import MultiImageReader
 from tools.episode_writer import EpisodeWriter
@@ -237,7 +238,7 @@ class FileActionProviderReplay(ActionProvider):
         print(f"[{self.name}] Resource cleanup completed")
     def get_state(self,env):
 
-        joint_pos = env.scene["robot"].data.joint_pos
+        joint_pos = to_torch(env.scene["robot"].data.joint_pos)
         left_arm_joint_pose = joint_pos[:,self.left_arm_joint_indices][0].detach().cpu().numpy().tolist()
         right_arm_joint_pose = joint_pos[:,self.right_arm_joint_indices][0].detach().cpu().numpy().tolist()
         if self.enable_gripper:

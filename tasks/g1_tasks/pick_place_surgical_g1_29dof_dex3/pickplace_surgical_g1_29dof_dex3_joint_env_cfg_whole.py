@@ -26,6 +26,7 @@ from tasks.common_event.event_manager import SimpleEvent, SimpleEventManager
 
 # import public scene configuration
 from tasks.common_scene.base_scene_pickplace_surgical import SurgicalSceneCfg
+from tasks.utils.ensure_sim_physics import ensure_sim_has_physx_cfg  # isort: skip
 
 ##
 # Scene definition
@@ -41,7 +42,7 @@ class ObjectTableSceneCfg(SurgicalSceneCfg):
     
     # Humanoid robot w/ arms higher
     # 5. humanoid robot configuration 
-    robot: ArticulationCfg = G1RobotPresets.g1_29dof_dex3_base_fix(init_pos=(0.0336, 0.0, 0.79), init_rot=(1.0, 0, 0, 0.0))
+    robot: ArticulationCfg = G1RobotPresets.g1_29dof_dex3_base_fix(init_pos=(0.0336, 0.0, 0.79), init_rot=(0.0, 0.0, 0.0, 1.0))
     # 6. add camera configuration 
     front_camera = CameraPresets.g1_front_camera()
     left_wrist_camera = CameraPresets.left_dex3_wrist_camera()
@@ -138,7 +139,7 @@ class PickPlaceG129DEX3JointEnvCfg(ManagerBasedRLEnvCfg):
     # 1. scene settings
     scene: ObjectTableSceneCfg = ObjectTableSceneCfg(num_envs=1, # environment number: 1
                                                      env_spacing=2.5, # environment spacing: 2.5 meter
-                                                     replicate_physics=True # enable physics replication
+                                                     replicate_physics=False # deformable objects require False
                                                      )
     # basic settings
     observations: ObservationsCfg = ObservationsCfg()   # observation configuration
@@ -152,16 +153,17 @@ class PickPlaceG129DEX3JointEnvCfg(ManagerBasedRLEnvCfg):
     curriculum = None # curriculum manager
     def __post_init__(self):
         """Post initialization."""
+        ensure_sim_has_physx_cfg(self.sim)
         # general settings
         self.decimation = 2
         self.episode_length_s = 20.0
         # simulation settings
         self.sim.dt = 0.005
         self.sim.render_interval = self.decimation
-        self.sim.physx.bounce_threshold_velocity = 0.01
-        self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
-        self.sim.physx.gpu_total_aggregate_pairs_capacity = 16 * 1024
-        self.sim.physx.friction_correlation_distance = 0.00625
+        self.sim.physics.bounce_threshold_velocity = 0.01
+        self.sim.physics.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
+        self.sim.physics.gpu_total_aggregate_pairs_capacity = 16 * 1024
+        self.sim.physics.friction_correlation_distance = 0.00625
         self.sim.render.enable_translucency = True
         # Enable RTX Ray Tracing setting: Fractional Cutout Opacity
         # Using carb_settings allows direct override of RTX renderer options

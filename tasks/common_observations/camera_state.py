@@ -16,6 +16,7 @@ import queue
 # add the project root directory to the path, so that the shared memory tool can be imported
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from image_server.shared_memory_utils import MultiImageWriter
+from tasks.utils.warp_utils import to_torch  # Isaac Lab 3.0: wp.array -> torch
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
@@ -111,7 +112,7 @@ def get_camera_image(
     camera_keys = _camera_cache['camera_keys']
     # Head camera (front camera)
     if "front_camera" in camera_keys:
-        head_image = env.scene["front_camera"].data.output["rgb"][0]  # [batch, height, width, 3]
+        head_image = to_torch(env.scene["front_camera"].data.output["rgb"])[0]  # [batch, height, width, 3]
 
         if head_image.device.type == 'cpu':
             images["head"] = head_image.numpy()
@@ -120,7 +121,7 @@ def get_camera_image(
     
     # Left camera (left wrist camera)
     if "left_wrist_camera" in camera_keys:
-        left_image = env.scene["left_wrist_camera"].data.output["rgb"][0]
+        left_image = to_torch(env.scene["left_wrist_camera"].data.output["rgb"])[0]
         if left_image.device.type == 'cpu':
             images["left"] = left_image.numpy()
         else:
@@ -128,7 +129,7 @@ def get_camera_image(
     
     # Right camera (right wrist camera)  
     if "right_wrist_camera" in camera_keys:
-        right_image = env.scene["right_wrist_camera"].data.output["rgb"][0]
+        right_image = to_torch(env.scene["right_wrist_camera"].data.output["rgb"])[0]
         if right_image.device.type == 'cpu':
             images["right"] = right_image.numpy()
         else:
@@ -143,7 +144,7 @@ def get_camera_image(
             
             # if there are available cameras, use the first three as head, left, right
             for i, camera_name in enumerate(available_cameras[:3]):
-                camera_image = env.scene[camera_name].data.output["rgb"][0]
+                camera_image = to_torch(env.scene[camera_name].data.output["rgb"])[0]
                 
                
                 if camera_image.device.type == 'cpu':

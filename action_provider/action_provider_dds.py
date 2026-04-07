@@ -146,21 +146,42 @@ class DDSActionProvider(ActionProvider):
 
         
         # precompute indices (for vectorization)
+        # validate joint names against actual robot model and auto-disable on mismatch
+        def _validate_joints(mapping, label):
+            missing = [n for n in mapping if n not in self.joint_to_index]
+            if missing:
+                print(f"[{self.name}] WARNING: {label} joints not in robot model, disabling: {missing}")
+                return False
+            return True
 
         if self.enable_gripper:
-            self._gripper_target_indices = [self.joint_to_index[name] for name in self.gripper_joint_mapping.keys()]
-            self._gripper_source_indices = [idx for idx in self.gripper_joint_mapping.values()]
+            if _validate_joints(self.gripper_joint_mapping, "gripper"):
+                self._gripper_target_indices = [self.joint_to_index[name] for name in self.gripper_joint_mapping.keys()]
+                self._gripper_source_indices = [idx for idx in self.gripper_joint_mapping.values()]
+            else:
+                self.enable_gripper = False
+                self.gripper_dds = None
         if self.enable_dex3:
-            self._left_hand_target_indices = [self.joint_to_index[name] for name in self.left_hand_joint_mapping.keys()]
-            self._left_hand_source_indices = [idx for idx in self.left_hand_joint_mapping.values()]
-            self._right_hand_target_indices = [self.joint_to_index[name] for name in self.right_hand_joint_mapping.keys()]
-            self._right_hand_source_indices = [idx for idx in self.right_hand_joint_mapping.values()]
+            if _validate_joints(self.left_hand_joint_mapping, "dex3 left_hand") and \
+               _validate_joints(self.right_hand_joint_mapping, "dex3 right_hand"):
+                self._left_hand_target_indices = [self.joint_to_index[name] for name in self.left_hand_joint_mapping.keys()]
+                self._left_hand_source_indices = [idx for idx in self.left_hand_joint_mapping.values()]
+                self._right_hand_target_indices = [self.joint_to_index[name] for name in self.right_hand_joint_mapping.keys()]
+                self._right_hand_source_indices = [idx for idx in self.right_hand_joint_mapping.values()]
+            else:
+                self.enable_dex3 = False
+                self.dex3_dds = None
         if self.enable_inspire:
-            self._inspire_target_indices = [self.joint_to_index[name] for name in self.inspire_hand_joint_mapping.keys()]
-            self._inspire_source_indices = [idx for idx in self.inspire_hand_joint_mapping.values()]
-            self._inspire_special_target_indices = [self.joint_to_index[name] for name in self.special_joint_mapping.keys()]
-            self._inspire_special_source_indices = [spec[0] for spec in self.special_joint_mapping.values()]
-            self._inspire_special_scales = torch.tensor([spec[1] for spec in self.special_joint_mapping.values()], dtype=torch.float32)
+            if _validate_joints(self.inspire_hand_joint_mapping, "inspire") and \
+               _validate_joints(self.special_joint_mapping, "inspire special"):
+                self._inspire_target_indices = [self.joint_to_index[name] for name in self.inspire_hand_joint_mapping.keys()]
+                self._inspire_source_indices = [idx for idx in self.inspire_hand_joint_mapping.values()]
+                self._inspire_special_target_indices = [self.joint_to_index[name] for name in self.special_joint_mapping.keys()]
+                self._inspire_special_source_indices = [spec[0] for spec in self.special_joint_mapping.values()]
+                self._inspire_special_scales = torch.tensor([spec[1] for spec in self.special_joint_mapping.values()], dtype=torch.float32)
+            else:
+                self.enable_inspire = False
+                self.inspire_dds = None
         
         device = self.env.device
         self._arm_target_idx_t = torch.tensor(self._arm_target_indices, dtype=torch.long, device=device)

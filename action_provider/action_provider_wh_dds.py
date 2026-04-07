@@ -3,6 +3,8 @@
 from action_provider.action_base import ActionProvider
 from typing import Optional
 import torch
+import warp as wp
+from tasks.utils.warp_utils import to_torch
 from dds.dds_master import dds_manager
 import os
 import onnxruntime as ort
@@ -35,38 +37,61 @@ class DDSRLActionProvider(ActionProvider):
         self._setup_joint_mapping()
         self.policy = self.load_policy(self.policy_path)
         
+        # validate joint names against actual robot model and auto-disable on mismatch
+        def _validate_joints(mapping, label):
+            missing = [n for n in mapping if n not in self.joint_to_index]
+            if missing:
+                print(f"[{self.name}] WARNING: {label} joints not in robot model, disabling: {missing}")
+                return False
+            return True
+
         # 预计算索引张量与复用缓冲
         device = self.env.device
         if hasattr(self, "arm_joint_mapping") and self.arm_joint_mapping:
-            self._arm_target_indices = [self.joint_to_index[name] for name in self.arm_joint_mapping.keys()]
-            self._arm_source_indices = [idx + 15 for idx in self.arm_joint_mapping.values()]
-            self._arm_target_idx_t = torch.tensor(self._arm_target_indices, dtype=torch.long, device=device)
-            self._arm_source_idx_t = torch.tensor(self._arm_source_indices, dtype=torch.long, device=device)
+            if _validate_joints(self.arm_joint_mapping, "arm"):
+                self._arm_target_indices = [self.joint_to_index[name] for name in self.arm_joint_mapping.keys()]
+                self._arm_source_indices = [idx + 15 for idx in self.arm_joint_mapping.values()]
+                self._arm_target_idx_t = torch.tensor(self._arm_target_indices, dtype=torch.long, device=device)
+                self._arm_source_idx_t = torch.tensor(self._arm_source_indices, dtype=torch.long, device=device)
         if self.enable_gripper:
-            self._gripper_target_indices = [self.joint_to_index[name] for name in self.gripper_joint_mapping.keys()]
-            self._gripper_source_indices = [idx for idx in self.gripper_joint_mapping.values()]
-            self._gripper_target_idx_t = torch.tensor(self._gripper_target_indices, dtype=torch.long, device=device)
-            self._gripper_source_idx_t = torch.tensor(self._gripper_source_indices, dtype=torch.long, device=device)
+            if _validate_joints(self.gripper_joint_mapping, "gripper"):
+                self._gripper_target_indices = [self.joint_to_index[name] for name in self.gripper_joint_mapping.keys()]
+                self._gripper_source_indices = [idx for idx in self.gripper_joint_mapping.values()]
+                self._gripper_target_idx_t = torch.tensor(self._gripper_target_indices, dtype=torch.long, device=device)
+                self._gripper_source_idx_t = torch.tensor(self._gripper_source_indices, dtype=torch.long, device=device)
+            else:
+                self.enable_gripper = False
+                self.gripper_dds = None
         if self.enable_dex3:
-            self._left_hand_target_indices = [self.joint_to_index[name] for name in self.left_hand_joint_mapping.keys()]
-            self._left_hand_source_indices = [idx for idx in self.left_hand_joint_mapping.values()]
-            self._right_hand_target_indices = [self.joint_to_index[name] for name in self.right_hand_joint_mapping.keys()]
-            self._right_hand_source_indices = [idx for idx in self.right_hand_joint_mapping.values()]
-            self._left_hand_target_idx_t = torch.tensor(self._left_hand_target_indices, dtype=torch.long, device=device)
-            self._left_hand_source_idx_t = torch.tensor(self._left_hand_source_indices, dtype=torch.long, device=device)
-            self._right_hand_target_idx_t = torch.tensor(self._right_hand_target_indices, dtype=torch.long, device=device)
-            self._right_hand_source_idx_t = torch.tensor(self._right_hand_source_indices, dtype=torch.long, device=device)
+            if _validate_joints(self.left_hand_joint_mapping, "dex3 left_hand") and \
+               _validate_joints(self.right_hand_joint_mapping, "dex3 right_hand"):
+                self._left_hand_target_indices = [self.joint_to_index[name] for name in self.left_hand_joint_mapping.keys()]
+                self._left_hand_source_indices = [idx for idx in self.left_hand_joint_mapping.values()]
+                self._right_hand_target_indices = [self.joint_to_index[name] for name in self.right_hand_joint_mapping.keys()]
+                self._right_hand_source_indices = [idx for idx in self.right_hand_joint_mapping.values()]
+                self._left_hand_target_idx_t = torch.tensor(self._left_hand_target_indices, dtype=torch.long, device=device)
+                self._left_hand_source_idx_t = torch.tensor(self._left_hand_source_indices, dtype=torch.long, device=device)
+                self._right_hand_target_idx_t = torch.tensor(self._right_hand_target_indices, dtype=torch.long, device=device)
+                self._right_hand_source_idx_t = torch.tensor(self._right_hand_source_indices, dtype=torch.long, device=device)
+            else:
+                self.enable_dex3 = False
+                self.dex3_dds = None
         if self.enable_inspire:
-            self._inspire_target_indices = [self.joint_to_index[name] for name in self.inspire_hand_joint_mapping.keys()]
-            self._inspire_source_indices = [idx for idx in self.inspire_hand_joint_mapping.values()]
-            self._inspire_special_target_indices = [self.joint_to_index[name] for name in self.special_joint_mapping.keys()]
-            self._inspire_special_source_indices = [spec[0] for spec in self.special_joint_mapping.values()]
-            self._inspire_special_scales = torch.tensor([spec[1] for spec in self.special_joint_mapping.values()], dtype=torch.float32)
-            self._inspire_target_idx_t = torch.tensor(self._inspire_target_indices, dtype=torch.long, device=device)
-            self._inspire_source_idx_t = torch.tensor(self._inspire_source_indices, dtype=torch.long, device=device)
-            self._inspire_special_target_idx_t = torch.tensor(self._inspire_special_target_indices, dtype=torch.long, device=device)
-            self._inspire_special_source_idx_t = torch.tensor(self._inspire_special_source_indices, dtype=torch.long, device=device)
-            self._inspire_special_scales_t = self._inspire_special_scales.to(device)
+            if _validate_joints(self.inspire_hand_joint_mapping, "inspire") and \
+               _validate_joints(self.special_joint_mapping, "inspire special"):
+                self._inspire_target_indices = [self.joint_to_index[name] for name in self.inspire_hand_joint_mapping.keys()]
+                self._inspire_source_indices = [idx for idx in self.inspire_hand_joint_mapping.values()]
+                self._inspire_special_target_indices = [self.joint_to_index[name] for name in self.special_joint_mapping.keys()]
+                self._inspire_special_source_indices = [spec[0] for spec in self.special_joint_mapping.values()]
+                self._inspire_special_scales = torch.tensor([spec[1] for spec in self.special_joint_mapping.values()], dtype=torch.float32)
+                self._inspire_target_idx_t = torch.tensor(self._inspire_target_indices, dtype=torch.long, device=device)
+                self._inspire_source_idx_t = torch.tensor(self._inspire_source_indices, dtype=torch.long, device=device)
+                self._inspire_special_target_idx_t = torch.tensor(self._inspire_special_target_indices, dtype=torch.long, device=device)
+                self._inspire_special_source_idx_t = torch.tensor(self._inspire_special_source_indices, dtype=torch.long, device=device)
+                self._inspire_special_scales_t = self._inspire_special_scales.to(device)
+            else:
+                self.enable_inspire = False
+                self.inspire_dds = None
         
         self._full_action_buf = torch.zeros(len(self.all_joint_names), device=device, dtype=torch.float32)
         self._positions_buf = torch.empty(29, device=device, dtype=torch.float32)
@@ -261,9 +286,9 @@ class DDSRLActionProvider(ActionProvider):
                 self.arm_to_all_indices.append(self.all_joint_names.index(arm_joint))
             else:
                 raise ValueError(f"arm joint '{arm_joint}' not in all joint list")
-        self.default_waist_positions = self.env.scene["robot"].data.default_joint_pos[:, self.waist_to_all_indices]
-        self.default_action_positions = self.env.scene["robot"].data.default_joint_pos
-        self.default_action_velocities = self.env.scene["robot"].data.default_joint_vel
+        self.default_waist_positions = to_torch(self.env.scene["robot"].data.default_joint_pos)[:, self.waist_to_all_indices]
+        self.default_action_positions = to_torch(self.env.scene["robot"].data.default_joint_pos)
+        self.default_action_velocities = to_torch(self.env.scene["robot"].data.default_joint_vel)
         self.all_obs_indices = self.action_to_indices + self.arm_to_all_indices
         self.old_action_indices = []
         for old_action_joint in self.old_action_joints_names:
@@ -274,16 +299,16 @@ class DDSRLActionProvider(ActionProvider):
         self.arm_action = []
         self.obs_scales = {"ang_vel":1.0, "projected_gravity":1.0, "commands":1.0, 
                            "joint_pos":1.0, "joint_vel":1.0, "actions":1.0}
-        self.ang_vel = self.env.scene["robot"].data.root_ang_vel_b                      
-        self.projected_gravity = self.env.scene["robot"].data.projected_gravity_b       
-        self.joint_pos = self.env.scene["robot"].data.joint_pos
-        self.joint_vel = self.env.scene["robot"].data.joint_vel
+        self.ang_vel = to_torch(self.env.scene["robot"].data.root_ang_vel_b)
+        self.projected_gravity = to_torch(self.env.scene["robot"].data.projected_gravity_b)
+        self.joint_pos = to_torch(self.env.scene["robot"].data.joint_pos)
+        self.joint_vel = to_torch(self.env.scene["robot"].data.joint_vel)
         self.actor_obs_buffer = CircularBuffer(
             max_len=10, batch_size=1, device=self.env.device
         )
         self.num_envs =1
         self.clip_obs = 100
-        self.num_actions_all = self.env.scene["robot"].data.default_joint_pos[:,self.old_action_indices].shape[1]  
+        self.num_actions_all = to_torch(self.env.scene["robot"].data.default_joint_pos)[:,self.old_action_indices].shape[1]  
         self.action_buffer = DelayBuffer(
             5, self.num_envs, device=self.env.device
         )
@@ -342,10 +367,10 @@ class DDSRLActionProvider(ActionProvider):
         
         if command.dim() == 1:
             command = command.unsqueeze(0)  # [4] -> [1, 4]
-        self.ang_vel = self.env.scene["robot"].data.root_ang_vel_b                      
-        self.projected_gravity = self.env.scene["robot"].data.projected_gravity_b       
-        self.joint_pos = self.env.scene["robot"].data.joint_pos
-        self.joint_vel = self.env.scene["robot"].data.joint_vel
+        self.ang_vel = to_torch(self.env.scene["robot"].data.root_ang_vel_b)
+        self.projected_gravity = to_torch(self.env.scene["robot"].data.projected_gravity_b)
+        self.joint_pos = to_torch(self.env.scene["robot"].data.joint_pos)
+        self.joint_vel = to_torch(self.env.scene["robot"].data.joint_vel)
         action = self.action_buffer._circular_buffer.buffer[:, -1, :]     
         current_actor_obs = torch.cat(
         [

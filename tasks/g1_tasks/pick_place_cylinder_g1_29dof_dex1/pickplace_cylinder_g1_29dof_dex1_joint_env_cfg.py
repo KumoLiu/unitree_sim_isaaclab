@@ -24,6 +24,7 @@ from tasks.common_event.event_manager import SimpleEvent, SimpleEventManager
 
 # import public scene configuration
 from tasks.common_scene.base_scene_pickplace_cylindercfg import TableCylinderSceneCfg
+from tasks.utils.ensure_sim_physics import ensure_sim_has_physx_cfg  # isort: skip
 
 ##
 # Scene definition
@@ -137,16 +138,17 @@ class PickPlaceG129DEX1BaseFixEnvCfg(ManagerBasedRLEnvCfg):
     curriculum = None # curriculum manager
     def __post_init__(self):
         """Post initialization."""
+        ensure_sim_has_physx_cfg(self.sim)
         # general settings
         self.decimation = 2
         self.episode_length_s = 20.0
         # simulation settings
         self.sim.dt = 0.005
         self.sim.render_interval = self.decimation
-        self.sim.physx.bounce_threshold_velocity = 0.01
-        self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
-        self.sim.physx.gpu_total_aggregate_pairs_capacity = 16 * 1024
-        self.sim.physx.friction_correlation_distance = 0.00625
+        self.sim.physics.bounce_threshold_velocity = 0.01
+        self.sim.physics.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
+        self.sim.physics.gpu_total_aggregate_pairs_capacity = 16 * 1024
+        self.sim.physics.friction_correlation_distance = 0.00625
         # create event manager
         self.event_manager = SimpleEventManager()
 

@@ -25,6 +25,7 @@ from tasks.common_event.event_manager import SimpleEvent, SimpleEventManager
 
 # import public scene configuration
 from tasks.common_scene.base_scene_pickplace_cylindercfg_wholebody import TableCylinderSceneCfgWH
+from tasks.utils.ensure_sim_physics import ensure_sim_has_physx_cfg  # isort: skip
 
 ##
 # Scene definition
@@ -40,7 +41,7 @@ class ObjectTableSceneCfg(TableCylinderSceneCfgWH):
     # Humanoid robot w/ arms higher
     # 5. humanoid robot configuration 
     robot: ArticulationCfg = G1RobotPresets.g1_29dof_inspire_wholebody(init_pos=(-3.9, -2.81811, 0.8),
-        init_rot=(1, 0, 0, 0))
+        init_rot=(0.0, 0.0, 0.0, 1.0))
 
     contact_forces = ContactSensorCfg(prim_path="/World/envs/env_.*/Robot/.*", history_length=10, track_air_time=True, debug_vis=False)
     # 6. add camera configuration 
@@ -140,6 +141,7 @@ class MoveCylinderG129InspireWholebodyEnvCfg(ManagerBasedRLEnvCfg):
     curriculum = None # curriculum manager
     def __post_init__(self):
         """Post initialization."""
+        ensure_sim_has_physx_cfg(self.sim)
         # general settings
         self.decimation = 4
         self.episode_length_s = 20.0
@@ -147,10 +149,10 @@ class MoveCylinderG129InspireWholebodyEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.dt = 0.005
         self.scene.contact_forces.update_period = self.sim.dt
         self.sim.render_interval = self.decimation
-        self.sim.physx.bounce_threshold_velocity = 0.01
-        self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
-        self.sim.physx.gpu_total_aggregate_pairs_capacity = 16 * 1024
-        self.sim.physx.friction_correlation_distance = 0.00625
+        self.sim.physics.bounce_threshold_velocity = 0.01
+        self.sim.physics.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
+        self.sim.physics.gpu_total_aggregate_pairs_capacity = 16 * 1024
+        self.sim.physics.friction_correlation_distance = 0.00625
 
                 # 物理材料属性设置 / Physics material properties
         self.sim.physics_material.static_friction = 1.0  # 静摩擦系数 / Static friction

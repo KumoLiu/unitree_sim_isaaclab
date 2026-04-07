@@ -87,4 +87,4 @@ class TableCylinderSceneCfgWH(InteractiveSceneCfg): # inherit from the interacti
     )
     world_camera = CameraBaseCfg.get_camera_config(prim_path="/World/PerspectiveCamera",
                                                     pos_offset=(-1.9, -5.0, 1.8),
-                                                    rot_offset=( -0.40614,0.78544, 0.4277, -0.16986))
+                                                    rot_offset=(0.78544, 0.4277, -0.16986, -0.40614))

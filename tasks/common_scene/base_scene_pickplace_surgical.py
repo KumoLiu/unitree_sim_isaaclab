@@ -10,6 +10,8 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sim.spawners.from_files.from_files_cfg import GroundPlaneCfg, UsdFileCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
+from isaaclab_physx.assets import DeformableObjectCfg
+from isaaclab_physx.sim import DeformableBodyPropertiesCfg, SurfaceDeformableBodyMaterialCfg
 from tasks.common_config import   CameraBaseCfg  # isort: skip
 import os
 project_root = os.environ.get("PROJECT_ROOT")
@@ -22,47 +24,47 @@ class SurgicalSceneCfg(InteractiveSceneCfg): # inherit from the interactive scen
     scene = AssetBaseCfg(
         prim_path="/World/envs/env_.*/Scene",
         spawn=UsdFileCfg(
-            usd_path="/home/again/HealTH/Assets/scene.usd",  # use simple room model
+            usd_path="/home/again/下载/surgery-room-dev-internal-aaathemy-HealthAssetsAndScene/assets/Assets/scene04.usd",  # use simple room model
         ),
     )
     # Trocar (rigid object inside the loaded scene.usd)
-    trocar_1 = RigidObjectCfg(
-        prim_path="/World/envs/env_.*/Scene/Trocar002",
-        init_state=RigidObjectCfg.InitialStateCfg(
-            pos=[-1.61873, 1.9629, 0.82559],
-            rot=[0.60545, 0.00148, -0.72054, -0.33799]
-        ),
-    )
-    trocar_2 = RigidObjectCfg(
-        prim_path="/World/envs/env_.*/Scene/DisposableLaparoscopicPunctureDevice001",
-        init_state=RigidObjectCfg.InitialStateCfg(
-            pos=[-1.52635, 2.09436, 0.85483],
-            rot=[0.63046, -0.59294, -0.33848, 0.36928]
-        ),
-    )
+    # trocar_1 = RigidObjectCfg(
+    #     prim_path="/World/envs/env_.*/Scene/Trocar002",
+    #     init_state=RigidObjectCfg.InitialStateCfg(
+    #         pos=[-1.61873, 1.9629, 0.82559],
+    #         rot=[0.60545, 0.00148, -0.72054, -0.33799]
+    #     ),
+    # )
+    # trocar_2 = RigidObjectCfg(
+    #     prim_path="/World/envs/env_.*/Scene/DisposableLaparoscopicPunctureDevice001",
+    #     init_state=RigidObjectCfg.InitialStateCfg(
+    #         pos=[-1.52635, 2.09436, 0.85483],
+    #         rot=[0.63046, -0.59294, -0.33848, 0.36928]
+    #     ),
+    # )
 
     # Cart (example)
     # cart = RigidObjectCfg(
     #     prim_path="/World/envs/env_.*/Cart001"
     # )
     # Plate (example)
-    plate = RigidObjectCfg(
-        prim_path="/World/envs/env_.*/Scene/plate001",
-        init_state=RigidObjectCfg.InitialStateCfg(
-            pos=[-1.46817, 2.07344, 0.80932],
-            rot=[1.0, 0.0, 0.0, 0.0]
-        ),
-    )
+    # plate = RigidObjectCfg(
+    #     prim_path="/World/envs/env_.*/Scene/plate001",
+    #     init_state=RigidObjectCfg.InitialStateCfg(
+    #         pos=[-1.46817, 2.07344, 0.80932],
+    #         rot=[1.0, 0.0, 0.0, 0.0]
+    #     ),
+    # )
 
 
     # Tube (example)
-    tube = AssetBaseCfg(
-        prim_path="/World/envs/env_.*/Scene/DrainageTube003",
-        init_state=AssetBaseCfg.InitialStateCfg(
-            pos=[-1.49695, 2.087, 0.84494],
-            rot=[0.98716, 0.1597, 0.0, 0.0]
-        ),
-    )
+    # tube = AssetBaseCfg(
+    #     prim_path="/World/envs/env_.*/Scene/DrainageTube003",
+    #     init_state=AssetBaseCfg.InitialStateCfg(
+    #         pos=[-1.49695, 2.087, 0.84494],
+    #         rot=[0.98716, 0.1597, 0.0, 0.0]
+    #     ),
+    # )
     
     # room_walls = AssetBaseCfg(
     #     prim_path="/World/envs/env_.*/Room",
@@ -169,6 +171,27 @@ class SurgicalSceneCfg(InteractiveSceneCfg): # inherit from the interactive scen
     #     ),
     # )
     
+    # Cloth (deformable object)
+    cloth: DeformableObjectCfg = DeformableObjectCfg(
+        prim_path="{ENV_REGEX_NS}/Cloth",
+        spawn=UsdFileCfg(
+            usd_path="/home/again/下载/surgery-room-dev-internal-aaathemy-HealthAssetsAndScene/assets/Assets/Assets/Cloth/ProtectivePad001/ProtectivePad001.usd",
+            deformable_props=DeformableBodyPropertiesCfg(disable_gravity=False),
+            physics_material=SurfaceDeformableBodyMaterialCfg(
+                density=100.0,
+                youngs_modulus=1e4,
+                poissons_ratio=0.4,
+                surface_stretch_stiffness=1.0,
+                surface_shear_stiffness=1.0,
+                surface_bend_stiffness=0.01,
+            ),
+        ),
+        init_state=DeformableObjectCfg.InitialStateCfg(
+            pos=(-1.41, 2.355, 0.8),
+            rot=(0.0, 0.0, 0.0, 1.0),
+        ),
+    )
+
     # Ground plane
     # 3. ground configuration
     # ground = AssetBaseCfg(
@@ -186,5 +209,5 @@ class SurgicalSceneCfg(InteractiveSceneCfg): # inherit from the interactive scen
 
     world_camera = CameraBaseCfg.get_camera_config(prim_path="/World/PerspectiveCamera",
                                                     pos_offset=(-0.1, 3.6, 1.6),
-                                                    rot_offset=( -0.00617,0.00617, 0.70708, -0.70708),
+                                                    rot_offset=(0.00617, 0.70708, -0.70708, -0.00617),
                                                     focal_length = 16.5)

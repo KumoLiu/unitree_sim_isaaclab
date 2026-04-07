@@ -240,12 +240,17 @@ def main():
                 print(f"[camera] failed to set write interval: {e}")
 
         try:
-            if args_cli.solver_iterations is not None:
-                env.sim.physx.solver_iteration_count = int(args_cli.solver_iterations)
-                print(f"[sim] solver_iteration_count={env.sim.physx.solver_iteration_count}")
+            phys_cfg = env.sim.cfg.physics
+            if args_cli.solver_iterations is not None and phys_cfg is not None:
+                n = int(args_cli.solver_iterations)
+                # Isaac Lab 3.0: scene solver iterations map to min/max position iteration counts on PhysxCfg
+                phys_cfg.min_position_iteration_count = n
+                phys_cfg.max_position_iteration_count = n
+                print(f"[sim] position iteration counts set to {n}")
             if args_cli.physx_substeps is not None:
                 try:
-                    env.sim.physx.substeps = int(args_cli.physx_substeps)
+                    if phys_cfg is not None:
+                        setattr(phys_cfg, "substeps", int(args_cli.physx_substeps))
                 except Exception:
                     try:
                         env.sim.set_substeps(int(args_cli.physx_substeps))
@@ -254,8 +259,8 @@ def main():
                 print(f"[sim] physx_substeps set to {args_cli.physx_substeps}")
             if args_cli.gravity_z is not None:
                 g = float(args_cli.gravity_z)
-                env.sim.physx.gravity = (0.0, 0.0, g)
-                print(f"[sim] gravity set to {env.sim.physx.gravity}")
+                env.sim.cfg.gravity = (0.0, 0.0, g)
+                print(f"[sim] gravity set to {env.sim.cfg.gravity}")
         except Exception as e:
             print(f"[sim] failed to set physx params: {e}")
         if args_cli.skip_cvtcolor:

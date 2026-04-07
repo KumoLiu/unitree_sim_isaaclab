@@ -155,6 +155,6 @@ class TableRedGreenYellowBlockSceneCfg(InteractiveSceneCfg): # inherit from the 
 
     world_camera = CameraBaseCfg.get_camera_config(prim_path="/World/PerspectiveCamera",
                                                     pos_offset=(-4.1, -4.9, 1.8),
-                                                    rot_offset=( -0.3173,0.94833, 0.0, 0.0))
+                                                    rot_offset=(0.94833, 0.0, 0.0, -0.3173))
 
 

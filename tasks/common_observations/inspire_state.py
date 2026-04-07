@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 
 import torch
+from tasks.utils.warp_utils import to_torch  # Isaac Lab 3.0: wp.array -> torch
 
 
 _obs_cache = {
@@ -96,9 +97,9 @@ def get_robot_inspire_joint_states(
         torch.Tensor
     """
     # get the gripper joint states
-    joint_pos = env.scene["robot"].data.joint_pos
-    joint_vel = env.scene["robot"].data.joint_vel  
-    joint_torque = env.scene["robot"].data.applied_torque
+    joint_pos = to_torch(env.scene["robot"].data.joint_pos)
+    joint_vel = to_torch(env.scene["robot"].data.joint_vel)  
+    joint_torque = to_torch(env.scene["robot"].data.applied_torque)
     device = joint_pos.device
     batch = joint_pos.shape[0]
     
