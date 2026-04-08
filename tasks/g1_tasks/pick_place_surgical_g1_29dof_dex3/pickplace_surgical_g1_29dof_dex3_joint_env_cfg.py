@@ -42,7 +42,7 @@ class ObjectTableSceneCfg(SurgicalSceneCfg):
     
     # Humanoid robot w/ arms higher
     # 5. humanoid robot configuration 
-    robot: ArticulationCfg = G1RobotPresets.g1_29dof_dex3_base_fix(init_pos=(-1.91882, 1.94, 0.81168), init_rot=(0.0, 0.0, 0.0, 1.0))
+    robot: ArticulationCfg = G1RobotPresets.g1_29dof_dex3_base_fix(init_pos=(-1.92, 2.5, 0.81168), init_rot=(0.0, 0.0, 0.0, 1.0))
     # 6. add camera configuration 
     front_camera = CameraPresets.g1_front_camera()
     left_wrist_camera = CameraPresets.left_dex3_wrist_camera()
@@ -162,8 +162,10 @@ class PickPlaceG129DEX3JointEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.dt = 1/200
         self.sim.render_interval = self.decimation
         self.sim.physics.bounce_threshold_velocity = 0.01
-        # self.sim.physics.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
-        # self.sim.physics.gpu_total_aggregate_pairs_capacity = 16 * 1024
+        # Deformables: avoid contact buffer overflows (PhysX FEM cloth).
+        self.sim.physics.gpu_max_deformable_surface_contacts = 1024 * 1024 * 12
+        self.sim.physics.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
+        self.sim.physics.gpu_total_aggregate_pairs_capacity = 32 * 1024
         # self.sim.physics.friction_correlation_distance = 0.00625
         self.sim.render.enable_translucency = True
         # Enable RTX Ray Tracing setting: Fractional Cutout Opacity
