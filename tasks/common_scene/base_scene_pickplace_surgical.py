@@ -175,15 +175,15 @@ class SurgicalSceneCfg(InteractiveSceneCfg): # inherit from the interactive scen
     cloth: DeformableObjectCfg = DeformableObjectCfg(
         prim_path="{ENV_REGEX_NS}/Cloth",
         spawn=UsdFileCfg(
-            usd_path="/home/again/下载/surgery-room-dev-internal-aaathemy-HealthAssetsAndScene/assets/Assets/Assets/Cloth/ProtectivePad001/ProtectivePad001.usd",
-            deformable_props=DeformableBodyPropertiesCfg(disable_gravity=False),
+            usd_path="/home/again/下载/surgery-room-dev-internal-aaathemy-HealthAssetsAndScene/assets/Assets/Assets/Cloth/ProtectivePad002/ProtectivePad002.usd",
+            # deformable_props=DeformableBodyPropertiesCfg(disable_gravity=False),
             physics_material=SurfaceDeformableBodyMaterialCfg(
                 density=100.0,
-                youngs_modulus=1e4,
-                poissons_ratio=0.4,
+                youngs_modulus=5e5,
+                poissons_ratio=0.1,
                 surface_stretch_stiffness=1.0,
-                surface_shear_stiffness=1.0,
-                surface_bend_stiffness=0.01,
+                surface_shear_stiffness=5000,
+                surface_bend_stiffness=1,
             ),
         ),
         init_state=DeformableObjectCfg.InitialStateCfg(
