@@ -183,16 +183,6 @@ def main():
         env_cfg.seed = args_cli.seed
         env = gym.make(args_cli.task, cfg=env_cfg).unwrapped
         env.seed(args_cli.seed)
-        # Isaac Sim GUI viewport (Perspective view), not sensor cameras.
-        # Modify eye/target numbers here if you want a different view.
-        try:
-            env.sim.set_camera_view(
-                eye=(-0.8, 3.2, 1.8),
-                target=(-1.41, 2.355, 0.75),
-            )
-            print("[sim] viewport camera set: eye=(-0.8, 3.2, 1.8), target=(-1.41, 2.355, 0.75)")
-        except Exception as e:
-            print(f"[sim] failed to set viewport camera view: {e}")
         try:
             sensors_dict = getattr(env.scene, "sensors", {})
             if sensors_dict:
