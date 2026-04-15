@@ -24,7 +24,7 @@ class SurgicalSceneCfg(InteractiveSceneCfg): # inherit from the interactive scen
     scene = AssetBaseCfg(
         prim_path="/World/envs/env_.*/Scene",
         spawn=UsdFileCfg(
-            usd_path="/home/nvidia/workspace/mingxue/surgery-room-dev-internal/assets/Assets/scene04.usd",  # use simple room model
+            usd_path="/home/mxgu/Workspace/Omniverse/gmx/surgery-room-dev-internal/assets/Assets/scene05.usd",  # use simple room model
         ),
     )
     # Trocar (rigid object inside the loaded scene.usd)
@@ -175,7 +175,7 @@ class SurgicalSceneCfg(InteractiveSceneCfg): # inherit from the interactive scen
     cloth: DeformableObjectCfg = DeformableObjectCfg(
         prim_path="{ENV_REGEX_NS}/Cloth",
         spawn=UsdFileCfg(
-            usd_path="/home/nvidia/workspace/mingxue/surgery-room-dev-internal/assets/Assets/Assets/Cloth/ProtectivePad002/ProtectivePad002.usd",
+            usd_path="/home/mxgu/Workspace/Omniverse/gmx/surgery-room-dev-internal/assets/Assets/Assets/Cloth/Cloth_fold02/Cloth_fold02.usd",
             # deformable_props=DeformableBodyPropertiesCfg(disable_gravity=False),
             physics_material=SurfaceDeformableBodyMaterialCfg(
                 density=100.0,
