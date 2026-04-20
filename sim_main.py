@@ -85,7 +85,9 @@ parser.add_argument("--seed", type=int, default=42, help="environment seed")
 
 # add AppLauncher parameters
 AppLauncher.add_app_launcher_args(parser)
-args_cli = parser.parse_args()
+args_cli, extra_args = parser.parse_known_args()
+# Forward any --/key=value Omniverse Kit settings via sys.argv so Kit can pick them up
+sys.argv = [sys.argv[0]] + extra_args
 
 
 if args_cli.enable_dex3_dds and args_cli.enable_dex1_dds and args_cli.enable_inspire_dds:
@@ -97,6 +99,17 @@ if args_cli.enable_dex3_dds and args_cli.enable_dex1_dds and args_cli.enable_ins
 import pinocchio 
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
+
+try:
+    import omni.log
+    omni.log.set_channel_enabled("omni.usd-abi.plugin", False, omni.log.SettingBehavior.OVERRIDE)
+except Exception:
+    try:
+        import carb
+        s = carb.settings.get_settings()
+        s.set("/log/channels/omni.usd-abi.plugin/enabled", False)
+    except Exception:
+        pass
 
 from layeredcontrol.robot_control_system import (
     RobotController, 

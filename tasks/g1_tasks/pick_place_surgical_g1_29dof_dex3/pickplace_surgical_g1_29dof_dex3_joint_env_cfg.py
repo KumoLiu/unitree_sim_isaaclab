@@ -42,7 +42,7 @@ class ObjectTableSceneCfg(SurgicalSceneCfg):
     
     # Humanoid robot w/ arms higher
     # 5. humanoid robot configuration 
-    robot: ArticulationCfg = G1RobotPresets.g1_29dof_dex3_base_fix(init_pos=(-1.92, 2.5, 0.81168), init_rot=(0.0, 0.0, 0.0, 1.0))
+    robot: ArticulationCfg = G1RobotPresets.g1_29dof_dex3_base_fix(init_pos=(-1.85, 2.5, 0.81168), init_rot=(0.0, 0.0, 0.0, 1.0))
     # 6. add camera configuration 
     front_camera = CameraPresets.g1_front_camera()
     left_wrist_camera = CameraPresets.left_dex3_wrist_camera()

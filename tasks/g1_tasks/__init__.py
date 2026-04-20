@@ -10,6 +10,7 @@ from . import pick_place_cylinder_g1_29dof_dex3
 from . import pick_place_cylinder_g1_29dof_dex1
 from . import pick_place_cylinder_g1_29dof_inspire
 from . import pick_place_surgical_g1_29dof_dex3
+from . import pick_place_surgical_g1_29dof_inspire
 
 from . import pick_place_redblock_g1_29dof_dex1
 from . import pick_place_redblock_g1_29dof_dex3
@@ -28,6 +29,7 @@ __all__ = [
         "pick_place_cylinder_g1_29dof_dex3", "pick_place_cylinder_g1_29dof_dex1", 
         "pick_place_redblock_g1_29dof_dex1", "pick_place_redblock_g1_29dof_dex3", 
         "pick_place_surgical_g1_29dof_dex3",
+        "pick_place_surgical_g1_29dof_inspire",
         "stack_rgyblock_g1_29dof_dex1", "stack_rgyblock_g1_29dof_dex3", 
         "stack_rgyblock_g1_29dof_inspire",
         "pick_redblock_into_drawer_g1_29dof_dex1","pick_redblock_into_drawer_g1_29dof_dex3",
