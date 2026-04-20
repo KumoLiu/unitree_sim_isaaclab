@@ -20,11 +20,11 @@ class SurgicalSceneCfg(InteractiveSceneCfg): # inherit from the interactive scen
     """object table scene configuration class
     defines a complete scene containing robot, object, table, etc.
     """
-      # 1. room wall configuration - disable collisions to avoid GPU-cloth incompatibility
+    #   # 1. room wall configuration - disable collisions to avoid GPU-cloth incompatibility
     scene = AssetBaseCfg(
         prim_path="/World/envs/env_.*/Scene",
         spawn=UsdFileCfg(
-            usd_path="/home/nvidia/workspace/mingxue/surgery-room-dev-internal/assets/Assets/scene04.usd",
+            usd_path="/home/nvidia/workspace/mingxue/surgery-room-dev-internal/assets/Assets/scene05.usd",
             # collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=False),
         ),
         init_state=AssetBaseCfg.InitialStateCfg(
@@ -37,18 +37,18 @@ class SurgicalSceneCfg(InteractiveSceneCfg): # inherit from the interactive scen
     cloth: DeformableObjectCfg = DeformableObjectCfg(
         prim_path="{ENV_REGEX_NS}/Cloth",
         spawn=UsdFileCfg(
-            usd_path="/home/nvidia/workspace/mingxue/surgery-room-dev-internal/assets/Assets/Assets/Cloth/Cloth_fold03/Cloth_fold04.usd",
+            usd_path="/home/nvidia/workspace/mingxue/surgery-room-dev-internal/assets/Assets/Assets/Cloth/Cloth_fold05/Cloth_fold04.usd",
             physics_material=SurfaceDeformableBodyMaterialCfg(
-                density=200.0,
+                density=100.0,
                 youngs_modulus=5e5,
                 poissons_ratio=0.1,
                 surface_stretch_stiffness=1.0,
-                surface_shear_stiffness=5000.0,
-                surface_bend_stiffness=5.0,
+                surface_shear_stiffness=5000,
+                surface_bend_stiffness=1,
             ),
         ),
         init_state=DeformableObjectCfg.InitialStateCfg(
-            pos=(-1.51, 2.505, 0.79),
+            pos=(-1.52, 2.505, 0.83),
             rot=(0.0, 0.0, 0.0, 1.0),
         ),
     )
@@ -56,7 +56,7 @@ class SurgicalSceneCfg(InteractiveSceneCfg): # inherit from the interactive scen
     # cloth: AssetBaseCfg = AssetBaseCfg(
     #     prim_path="{ENV_REGEX_NS}/Cloth",
     #     spawn=UsdFileCfg(
-    #         usd_path="/home/nvidia/workspace/mingxue/surgery-room-dev-internal/assets/Assets/Assets/Cloth/Cloth_fold03/Cloth_fold03.usd",
+    #         usd_path="/home/nvidia/workspace/mingxue/surgery-room-dev-internal/assets/Assets/Assets/Cloth/Cloth_fold03/Cloth_fold04.usd",
     #     ),
     #     init_state=AssetBaseCfg.InitialStateCfg(
     #         pos=(-1.51, 2.355, 0.80),
@@ -64,25 +64,38 @@ class SurgicalSceneCfg(InteractiveSceneCfg): # inherit from the interactive scen
     #     ),
     # )
 
-    # Ground plane
+    # # Ground plane
     # # 3. ground configuration
     # ground = AssetBaseCfg(
     #     prim_path="/World/GroundPlane",    # ground in the scene
     #     spawn=GroundPlaneCfg( ),    # ground configuration
     # )
 
+    # table = AssetBaseCfg(
+    #     prim_path="{ENV_REGEX_NS}/Table",
+    #     spawn=UsdFileCfg(
+    #         usd_path="/home/nvidia/workspace/mingxue/surgery-room-dev-internal/assets/Assets/Assets/Table256/Table256.usd",
+    #         scale=(1, 1, 0.9),
+    #         collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=False),
+    #         ),
+    #     init_state=AssetBaseCfg.InitialStateCfg(
+    #         pos=(-1.51, 2.355, 0.385*0.9),
+    #         rot=(0.0, 0.0, 0.70711, 0.70711),
+    #     ),
+    # )
+
     # table_top_collider = AssetBaseCfg(
     #     prim_path="{ENV_REGEX_NS}/TableTopCollider",
     #     spawn=sim_utils.CuboidCfg(
-    #         size=(0.8, 0.6, 0.02),
+    #         size=(1.0, 0.60, 0.04),
     #         collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=True),
     #         visual_material=sim_utils.PreviewSurfaceCfg(
     #             diffuse_color=(1.0, 1.0, 1.0),
-    #             opacity=0.0,
+    #             opacity=1.0,
     #         ),
     #     ),
     #     init_state=AssetBaseCfg.InitialStateCfg(
-    #         pos=(-1.51, 2.355, 0.77),
+    #         pos=(-1.40, 2.355, 0.74),
     #         rot=(0.0, 0.0, 0.70711, 0.70711),
     #     ),
     # )

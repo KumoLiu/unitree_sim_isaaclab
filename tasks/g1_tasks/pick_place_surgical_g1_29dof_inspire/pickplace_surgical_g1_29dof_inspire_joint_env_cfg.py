@@ -47,10 +47,10 @@ class ObjectTableSceneCfg(SurgicalSceneCfg):
         custom_joint_pos={
             "left_shoulder_pitch_joint": -0.3,
             "right_shoulder_pitch_joint": -0.3,
-            "left_shoulder_roll_joint": 1.2,
-            "right_shoulder_roll_joint": -1.2,
-            "left_elbow_joint": -0.8,
-            "right_elbow_joint": -0.8,
+            "left_shoulder_roll_joint": 0.5,
+            "right_shoulder_roll_joint": -0.5,
+            "left_elbow_joint": -0.5,
+            "right_elbow_joint": -0.5,
         },
     )
     # camera configuration (Inspire wrist cameras)
@@ -137,14 +137,6 @@ class PickPlaceG129InspireJointEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.render_interval = self.decimation
         self.sim.physics.bounce_threshold_velocity = 0.01
         self.sim.physics.gpu_max_deformable_surface_contacts = 2**23
-        self.sim.physics.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024
-        self.sim.physics.gpu_total_aggregate_pairs_capacity = 32 * 1024
-        self.sim.render.enable_translucency = False
-        self.sim.render.carb_settings = {
-            "rtx.raytracing.fractionalCutoutOpacity": False,
-            "rtx.sceneDb.gpuSmoothNormals": False,
-        }
-
         self.scene.robot.actuators["arms"].stiffness = {
             ".*_shoulder_.*_joint": 250.0,
             ".*_elbow_joint": 250.0,
