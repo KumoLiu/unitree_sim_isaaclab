@@ -274,14 +274,16 @@ class G1RobotPresets:
 
     @classmethod
     def g1_29dof_inspire_base_fix(cls,init_pos: Tuple[float, float, float] = (-0.15, 0.0, 0.76),
-        init_rot: Tuple[float, float, float, float] = (0.0, 0.0, 0.7071, 0.7071)) -> ArticulationCfg:
+        init_rot: Tuple[float, float, float, float] = (0.0, 0.0, 0.7071, 0.7071),
+        custom_joint_pos: Optional[Dict[str, float]] = None) -> ArticulationCfg:
         """pick-place task configuration - inspire hand"""
         return RobotBaseCfg.get_base_config(
             init_pos=init_pos,
             init_rot=init_rot,
             include_waist=False,
             hand_type="inspire",
-            base_config=G129_CFG_WITH_INSPIRE_HAND
+            base_config=G129_CFG_WITH_INSPIRE_HAND,
+            custom_joint_pos=custom_joint_pos,
         )
     @classmethod
     def g1_29dof_dex1_wholebody(cls,init_pos: Tuple[float, float, float] = (-0.15, 0.0, 0.80),

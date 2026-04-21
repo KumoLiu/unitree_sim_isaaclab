@@ -17,7 +17,6 @@ from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.utils import configclass
-from isaaclab_assets.robots.unitree import G1_INSPIRE_FTP_CFG
 
 from . import mdp
 # use Isaac Lab native event system
@@ -41,15 +40,18 @@ class ObjectTableSceneCfg(SurgicalSceneCfg):
     uses G1 29-dof with Inspire hand
     """
     
-    # G1 29-dof robot with Inspire hand (Nucleus USD, same as tablecloth task)
-    robot: ArticulationCfg = G1_INSPIRE_FTP_CFG.replace(
-        prim_path="/World/envs/env_.*/Robot",
-        init_state=ArticulationCfg.InitialStateCfg(
-            pos=(-1.92, 2.5, 0.81168),
-            rot=(0.0, 0.0, 0.0, 1.0),
-            joint_pos={".*": 0.0},
-            joint_vel={".*": 0.0},
-        ),
+    # G1 29-dof robot with Inspire hand (base fixed, waist locked, arms raised)
+    robot: ArticulationCfg = G1RobotPresets.g1_29dof_inspire_base_fix(
+        init_pos=(-1.92, 2.5, 0.81168),
+        init_rot=(0.0, 0.0, 0.0, 1.0),
+        custom_joint_pos={
+            "left_shoulder_pitch_joint": -0.3,
+            "right_shoulder_pitch_joint": -0.3,
+            "left_shoulder_roll_joint": 0.5,
+            "right_shoulder_roll_joint": -0.5,
+            "left_elbow_joint": -0.5,
+            "right_elbow_joint": -0.5,
+        },
     )
     # camera configuration (Inspire wrist cameras)
     front_camera = CameraPresets.g1_front_camera()
@@ -130,16 +132,20 @@ class PickPlaceG129InspireJointEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         ensure_sim_has_physx_cfg(self.sim)
         self.decimation = 4
-        self.episode_length_s = 20.0
-        self.sim.dt = 1/200
+        self.episode_length_s = 30.0
+        self.sim.dt = 1 / 120
         self.sim.render_interval = self.decimation
         self.sim.physics.bounce_threshold_velocity = 0.01
-        self.sim.physics.gpu_max_deformable_surface_contacts = 1024 * 1024 * 12
-        self.sim.physics.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
-        self.sim.physics.gpu_total_aggregate_pairs_capacity = 32 * 1024
-        self.sim.render.enable_translucency = True
-        self.sim.render.carb_settings = {
-            "rtx.raytracing.fractionalCutoutOpacity": True,
+        self.sim.physics.gpu_max_deformable_surface_contacts = 2**23
+        self.scene.robot.actuators["arms"].stiffness = {
+            ".*_shoulder_.*_joint": 250.0,
+            ".*_elbow_joint": 250.0,
+            ".*_wrist_.*_joint": 200.0,
+        }
+        self.scene.robot.actuators["arms"].damping = {
+            ".*_shoulder_.*_joint": 20.0,
+            ".*_elbow_joint": 20.0,
+            ".*_wrist_.*_joint": 20.0,
         }
 
         self.event_manager = SimpleEventManager()

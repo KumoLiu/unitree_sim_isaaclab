@@ -10,7 +10,7 @@ import os
 project_root = os.environ.get("PROJECT_ROOT")
 G129_CFG_WITH_DEX3_BASE_FIX = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{project_root}/assets/robots/g1-29dof-dex3-base-fix-usd/g1_29dof_with_dex3_base_fix.usd",
+        usd_path=f"{project_root}/assets/robots/g1_29dof_with_dex3_base_fix.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=True,
@@ -178,7 +178,7 @@ G129_CFG_WITH_DEX3_BASE_FIX = ArticulationCfg(
 
 G129_CFG_WITH_DEX1_BASE_FIX = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{project_root}/assets/robots/g1-29dof-dex1-base-fix-usd/g1_29dof_with_dex1_base_fix1.usd",
+        usd_path=f"{project_root}/assets/robots/g1_29dof_with_dex1_base_fix1.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
