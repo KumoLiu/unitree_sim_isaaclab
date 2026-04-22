@@ -45,12 +45,12 @@ class ObjectTableSceneCfg(SurgicalSceneCfg):
         init_pos=(-1.92, 2.5, 0.81168),
         init_rot=(0.0, 0.0, 0.0, 1.0),
         custom_joint_pos={
-            "left_shoulder_pitch_joint": -0.3,
-            "right_shoulder_pitch_joint": -0.3,
+            "left_shoulder_pitch_joint": -0.8,
+            "right_shoulder_pitch_joint": -0.8,
             "left_shoulder_roll_joint": 0.5,
             "right_shoulder_roll_joint": -0.5,
-            "left_elbow_joint": -0.5,
-            "right_elbow_joint": -0.5,
+            "left_elbow_joint": -0.3,
+            "right_elbow_joint": -0.3,
         },
     )
     # camera configuration (Inspire wrist cameras)
