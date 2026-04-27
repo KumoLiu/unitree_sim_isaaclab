@@ -80,11 +80,15 @@ def get_robot_arm_joint_names() -> list[str]:
         "right_wrist_yaw_joint",
     ]
 
-# global variable to cache the DDS instance
+# Global cache for the g129 DDS instance.
+# Same bug as inspire_state.py: the first attempt happens *before*
+# dds/dds_create.py registers any objects, so the original code locked None
+# into the cache. Cache only on success; keep retrying on failure.
 from dds.dds_master import dds_manager
 from tasks.utils.warp_utils import to_torch  # Isaac Lab 3.0: wp.array -> torch
 _g1_robot_dds = None
-_dds_initialized = False
+_g1_atexit_registered = False
+_g1_warned_missing = False
 
 # 观测缓存：索引张量与DDS限速（50FPS）+ 预分配缓冲
 _obs_cache = {
@@ -101,19 +105,26 @@ _obs_cache = {
 }
 
 def _get_g1_robot_dds_instance():
-    """get the DDS instance, delay initialization"""
-    global _g1_robot_dds, _dds_initialized
-    
-    if not _dds_initialized or _g1_robot_dds is None:
-        try:
-            # dynamically import the DDS module
-            sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dds'))
-            from dds.dds_master import dds_manager
-            print(f"dds_manager: {dds_manager}")
-            _g1_robot_dds = dds_manager.get_object("g129")
-            print("[g1_state] G1 robot DDS communication instance obtained")
-            
-            # register the cleanup function
+    """Lazily fetch the g129 DDS object; retry until it is registered."""
+    global _g1_robot_dds, _g1_atexit_registered, _g1_warned_missing
+
+    if _g1_robot_dds is not None:
+        return _g1_robot_dds
+
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dds'))
+        from dds.dds_master import dds_manager
+        obj = dds_manager.get_object("g129")
+        if obj is None:
+            if not _g1_warned_missing:
+                print("[g1_state] g129 DDS not yet registered, will retry")
+                _g1_warned_missing = True
+            return None
+
+        _g1_robot_dds = obj
+        print("[g1_state] G1 robot DDS communication instance obtained")
+
+        if not _g1_atexit_registered:
             import atexit
             def cleanup_dds():
                 try:
@@ -123,13 +134,12 @@ def _get_g1_robot_dds_instance():
                 except Exception as e:
                     print(f"[g1_state] Error closing DDS: {e}")
             atexit.register(cleanup_dds)
-            
-        except Exception as e:
-            print(f"[g1_state] Failed to get G1 robot DDS instance: {e}")
-            _g1_robot_dds = None
-        
-        _dds_initialized = True
-    
+            _g1_atexit_registered = True
+
+    except Exception as e:
+        print(f"[g1_state] Failed to get G1 robot DDS instance: {e}")
+        return None
+
     return _g1_robot_dds
 
 def get_robot_boy_joint_states(

@@ -1,11 +1,8 @@
 # Copyright (c) 2025, Unitree Robotics Co., Ltd. All Rights Reserved.
 # License: Apache License, Version 2.0  
 
-import tempfile
 import torch
 from dataclasses import MISSING
-
-
 
 import isaaclab.envs.mdp as base_mdp
 from isaaclab.assets import ArticulationCfg
@@ -19,13 +16,10 @@ from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.utils import configclass
 
 from . import mdp
-# use Isaac Lab native event system
 
 from tasks.common_config import  G1RobotPresets, CameraPresets  # isort: skip
-from tasks.common_event.event_manager import SimpleEvent, SimpleEventManager
-
-# import public scene configuration
 from tasks.common_scene.base_scene_pickplace_surgical import SurgicalSceneCfg
+from tasks.common_event.cloth_inner_reset import reset_cloth_inner  # isort: skip
 from tasks.utils.ensure_sim_physics import ensure_sim_has_physx_cfg  # isort: skip
 
 ##
@@ -107,7 +101,17 @@ class RewardsCfg:
 
 @configclass
 class EventCfg:
-    pass
+    """Reset all scene entities (robot, rigid objects, deformables) to their initial state."""
+
+    reset_scene = EventTermCfg(func=base_mdp.reset_scene_to_default, mode="reset")
+    # Cloth_In001 is a rigid body embedded inside the cloth USD, not registered as
+    # a separate scene asset, so reset_scene_to_default does not touch it. Reset it
+    # explicitly back to its captured init pose (and zero velocity).
+    reset_cloth_inner = EventTermCfg(
+        func=reset_cloth_inner,
+        mode="reset",
+        params={"cloth_asset_name": "cloth"},
+    )
 
 
 @configclass
@@ -132,25 +136,8 @@ class PickPlaceG129InspireJointEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         ensure_sim_has_physx_cfg(self.sim)
         self.decimation = 4
-        self.episode_length_s = 30.0
+        self.episode_length_s = 60.0
         self.sim.dt = 1 / 120
-        self.sim.render_interval = self.decimation
+        self.sim.render_interval = self.decimation 
         self.sim.physics.bounce_threshold_velocity = 0.01
-        self.sim.physics.gpu_max_deformable_surface_contacts = 2**23
-        self.scene.robot.actuators["arms"].stiffness = {
-            ".*_shoulder_.*_joint": 250.0,
-            ".*_elbow_joint": 250.0,
-            ".*_wrist_.*_joint": 200.0,
-        }
-        self.scene.robot.actuators["arms"].damping = {
-            ".*_shoulder_.*_joint": 20.0,
-            ".*_elbow_joint": 20.0,
-            ".*_wrist_.*_joint": 20.0,
-        }
-
-        self.event_manager = SimpleEventManager()
-        self.event_manager.register("reset_all_self", SimpleEvent(
-            func=lambda env: base_mdp.reset_scene_to_default(
-                env,
-                torch.arange(env.num_envs, device=env.device))
-        ))
+        self.sim.physics.gpu_max_deformable_surface_contacts = 2**25

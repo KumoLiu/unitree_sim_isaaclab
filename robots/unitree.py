@@ -330,7 +330,7 @@ G129_CFG_WITH_DEX1_BASE_FIX = ArticulationCfg(
 
 G129_CFG_WITH_INSPIRE_HAND = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{project_root}/assets/robots/g1-29dof-inspire-base-fix-usd/g1_29dof_with_inspire_rev_1_0.usd",
+        usd_path=f"/home/mxgu/Workspace/Omniverse/gmx/unitree/unitree_sim_isaaclab/unitree_sim_isaaclab_usds/assets/robots/g1-29dof-inspire-base-fix-usd/g1_29dof_with_inspire_rev_1_0.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
