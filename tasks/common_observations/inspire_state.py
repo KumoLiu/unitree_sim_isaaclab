@@ -46,23 +46,38 @@ def get_robot_girl_joint_names() -> list[str]:
         "L_thumb_proximal_yaw_joint",
     ]
 
-# global variable to cache the DDS instance
+# Global cache for the DDS instance.
+# IMPORTANT: in the original sim_main.py boot order, the observation manager
+# is constructed *before* the DDS objects are registered. The first call to
+# get_object("inspire") therefore returns None, but we MUST NOT lock that
+# None into the cache or the publisher will silently never produce data and
+# the teleop client will hang forever on "Waiting to subscribe dds...".
+# Cache only on success; keep retrying (cheaply) on failure.
 _inspire_dds = None
-_dds_initialized = False
+_atexit_registered = False
+_warned_missing = False
 
 def _get_inspire_dds_instance():
-    """get the DDS instance, delay initialization"""
-    global _inspire_dds, _dds_initialized
-    
-    if not _dds_initialized or _inspire_dds is None:
-        try:
-            # dynamically import the DDS module
-            sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dds'))
-            from dds.dds_master import dds_manager
-            _inspire_dds = dds_manager.get_object("inspire")
-            print("[Observations] DDS communication instance obtained")
-            
-            # register the cleanup function
+    """Lazily fetch the inspire DDS object; retry until it is registered."""
+    global _inspire_dds, _atexit_registered, _warned_missing
+
+    if _inspire_dds is not None:
+        return _inspire_dds
+
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dds'))
+        from dds.dds_master import dds_manager
+        obj = dds_manager.get_object("inspire")
+        if obj is None:
+            if not _warned_missing:
+                print("[Observations] inspire DDS not yet registered, will retry")
+                _warned_missing = True
+            return None
+
+        _inspire_dds = obj
+        print("[Observations] DDS communication instance obtained")
+
+        if not _atexit_registered:
             import atexit
             def cleanup_dds():
                 try:
@@ -72,13 +87,12 @@ def _get_inspire_dds_instance():
                 except Exception as e:
                     print(f"[gripper_state] Error closing DDS: {e}")
             atexit.register(cleanup_dds)
-            
-        except Exception as e:
-            print(f"[Observations] Failed to get DDS instances: {e}")
-            _inspire_dds = None
-        
-        _dds_initialized = True
-    
+            _atexit_registered = True
+
+    except Exception as e:
+        print(f"[Observations] Failed to get DDS instances: {e}")
+        return None
+
     return _inspire_dds
 
 

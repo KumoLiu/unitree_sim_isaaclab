@@ -502,23 +502,18 @@ def main():
                 # Keyboard controls
                 try:
                     key = poll_key_nonblocking()
-                    if key == 'r':
-                        print("[kb] reset env")
-                        env.sim.reset()
-                        env.reset()
-                    elif key == '1':
+                    if key in ('r', '1', '2'):
+                        print(f"[kb] reset env (key={key})")
                         try:
-                            print("[kb] reset_object_self event")
-                            env_cfg.event_manager.trigger("reset_object_self", env)
-                        except Exception as e:
-                            print(f"[kb] reset_object_self failed: {e}")
-                    elif key == '2':
-                        try:
-                            print("[kb] reset_all_self event")
-                            env_cfg.event_manager.trigger("reset_all_self", env)
-                        except Exception as e:
-                            print(f"[kb] reset_all_self failed: {e}")
-                except Exception as e:
+                            env.reset()
+                            try:
+                                env.sim.step(render=False)
+                                env.sim.forward()
+                            except Exception:
+                                pass
+                        except Exception as reset_err:
+                            print(f"[kb] reset failed (continuing): {reset_err}")
+                except Exception:
                     # ignore keyboard errors to keep loop running
                     pass
                 if not args_cli.replay_data:
@@ -555,18 +550,29 @@ def main():
                     if reset_pose_cmd is not None:
                         try:
                             reset_category = reset_pose_cmd.get("reset_category")
-                            # print(f"reset_category: {reset_category}")
+                            do_reset = False
                             if (args_cli.enable_wholebody_dds and (reset_category == '1' or reset_category == '2')) or (not args_cli.enable_wholebody_dds and reset_category == '1'):
                                 print("reset object")
-                                env_cfg.event_manager.trigger("reset_object_self", env)
-                                reset_pose_dds.write_reset_pose_command(-1)
+                                do_reset = True
                             elif reset_category == '2' and not args_cli.enable_wholebody_dds:
                                 print("reset all")
-                                env_cfg.event_manager.trigger("reset_all_self", env)
+                                do_reset = True
+                            if do_reset:
+                                try:
+                                    env.reset()
+                                    # Force PhysX tensor view to refresh after reset,
+                                    # otherwise subsequent getDofVelocities may fail
+                                    # with "Simulation view object is invalidated".
+                                    try:
+                                        env.sim.step(render=False)
+                                        env.sim.forward()
+                                    except Exception:
+                                        pass
+                                except Exception as reset_err:
+                                    print(f"[reset] env.reset() failed (continuing): {reset_err}")
                                 reset_pose_dds.write_reset_pose_command(-1)
                         except Exception as e:
-                            print(f"Failed to write reset pose command: {e}")
-                            raise e
+                            print(f"Failed to handle reset pose command (continuing): {e}")
                 else:
                     if action_provider.get_start_loop() and data_idx<len(data_json_list):
                         print(f"data_idx: {data_idx}")
