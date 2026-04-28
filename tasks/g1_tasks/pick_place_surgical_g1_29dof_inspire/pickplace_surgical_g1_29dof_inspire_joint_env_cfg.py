@@ -36,15 +36,15 @@ class ObjectTableSceneCfg(SurgicalSceneCfg):
     
     # G1 29-dof robot with Inspire hand (base fixed, waist locked, arms raised)
     robot: ArticulationCfg = G1RobotPresets.g1_29dof_inspire_base_fix(
-        init_pos=(-1.92, 2.5, 0.81168),
+        init_pos=(-1.92, 2.4, 0.81168),
         init_rot=(0.0, 0.0, 0.0, 1.0),
         custom_joint_pos={
-            "left_shoulder_pitch_joint": -0.8,
-            "right_shoulder_pitch_joint": -0.8,
+            "left_shoulder_pitch_joint": -0.3,
+            "right_shoulder_pitch_joint": -0.3,
             "left_shoulder_roll_joint": 0.5,
             "right_shoulder_roll_joint": -0.5,
-            "left_elbow_joint": -0.3,
-            "right_elbow_joint": -0.3,
+            "left_elbow_joint": -0.5,
+            "right_elbow_joint": -0.5,
         },
     )
     # camera configuration (Inspire wrist cameras)
@@ -140,4 +140,8 @@ class PickPlaceG129InspireJointEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.dt = 1 / 120
         self.sim.render_interval = self.decimation 
         self.sim.physics.bounce_threshold_velocity = 0.01
-        self.sim.physics.gpu_max_deformable_surface_contacts = 2**25
+        # Deformables: keep contact buffer sizes reasonable to avoid PhysX GPU OOM.
+        # The previous value (2**25) can allocate multiple GB on some setups.
+        self.sim.physics.gpu_max_deformable_surface_contacts = 1024 * 1024 * 12
+        self.sim.physics.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
+        self.sim.physics.gpu_total_aggregate_pairs_capacity = 32 * 1024
