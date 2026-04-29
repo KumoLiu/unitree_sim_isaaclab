@@ -177,14 +177,14 @@ class SurgicalSceneCfg(InteractiveSceneCfg): # inherit from the interactive scen
         spawn=UsdFileCfg(
             usd_path="/home/again/NV0427/Cloth_fold06/Cloth_fold10.usd",
             # deformable_props=DeformableBodyPropertiesCfg(disable_gravity=False),
-        #     physics_material=SurfaceDeformableBodyMaterialCfg(
-        #         density=100.0,
-        #         youngs_modulus=5e5,
-        #         poissons_ratio=0.1,
-        #         surface_stretch_stiffness=1.0,
-        #         surface_shear_stiffness=5000,
-        #         surface_bend_stiffness=1,
-        #     ),
+            # physics_material=SurfaceDeformableBodyMaterialCfg(
+            #     density=100.0,
+            #     youngs_modulus=5e5,
+            #     poissons_ratio=0.1,
+            #     surface_stretch_stiffness=1.0,
+            #     surface_shear_stiffness=5000,
+            #     surface_bend_stiffness=1,
+            # ),
         ),
         init_state=DeformableObjectCfg.InitialStateCfg(
             pos=(-1.55, 2.355, 0.8),

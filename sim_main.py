@@ -4,14 +4,51 @@
 #!/usr/bin/env python3
 # main.py
 import os
+import glob
+import ctypes
+import sys
 
 project_root = os.path.dirname(os.path.abspath(__file__))
 os.environ["PROJECT_ROOT"] = project_root
 
+def _preload_isaacsim_glib():
+    """Preload Isaac Sim GLib/GObject libs to avoid system GLib symbol conflicts."""
+    conda_prefix = sys.prefix
+
+    deps_pattern = os.path.join(
+        conda_prefix,
+        "lib",
+        "python*",
+        "site-packages",
+        "isaacsim",
+        "extscache",
+        "omni.gpu_foundation-*",
+        "bin",
+        "deps",
+    )
+
+    for deps_dir in sorted(glob.glob(deps_pattern), reverse=True):
+        libglib = os.path.join(deps_dir, "libglib-2.0.so.0")
+        libgobject = os.path.join(deps_dir, "libgobject-2.0.so.0")
+        if not (os.path.exists(libglib) and os.path.exists(libgobject)):
+            continue
+        try:
+            # Ensure these deps win runtime lookup order for later plugin loading.
+            old_path = os.environ.get("LD_LIBRARY_PATH", "")
+            os.environ["LD_LIBRARY_PATH"] = f"{deps_dir}:{old_path}" if old_path else deps_dir
+            ctypes.CDLL(libglib, mode=ctypes.RTLD_GLOBAL)
+            ctypes.CDLL(libgobject, mode=ctypes.RTLD_GLOBAL)
+            print(f"[sim_main] preloaded GLib from: {deps_dir}")
+        except OSError as err:
+            print(f"[sim_main] warning: failed to preload GLib from {deps_dir}: {err}")
+        break
+
+
+_preload_isaacsim_glib()
+
 import argparse
 import contextlib
 import time
-import sys
 import signal
 import threading
 import termios

@@ -168,6 +168,13 @@ class PickPlaceG129DEX3JointEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.physics.gpu_total_aggregate_pairs_capacity = 32 * 1024
         # self.sim.physics.friction_correlation_distance = 0.00625
         self.sim.render.enable_translucency = True
+        # RTX anti-aliasing: use DLSS (maps to carb ``/rtx/post/dlss/execMode`` via Isaac Lab).
+        # dlss_mode: 0 Performance, 1 Balanced, 2 Quality, 3 Auto
+        self.sim.render.antialiasing_mode = "DLSS"
+        self.sim.render.dlss_mode = 0
+        self.sim.render.rendering_mode = "performance"
+        # Optional: DLSS Frame Generation (Ada+); leave False unless you need it.
+        self.sim.render.enable_dlssg = False
         # Enable RTX Ray Tracing setting: Fractional Cutout Opacity
         # Using carb_settings allows direct override of RTX renderer options
         # Reference key corresponds to the Render Settings UI "Fractional Cutout Opacity"

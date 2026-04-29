@@ -136,9 +136,9 @@ class PickPlaceG129InspireJointEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         ensure_sim_has_physx_cfg(self.sim)
         self.decimation = 4
-        self.episode_length_s = 60.0
+        self.episode_length_s = 60
         self.sim.dt = 1 / 120
-        self.sim.render_interval = self.decimation 
+        self.sim.render_interval = self.decimation
         self.sim.physics.bounce_threshold_velocity = 0.01
         # Deformables: keep contact buffer sizes reasonable to avoid PhysX GPU OOM.
         # The previous value (2**25) can allocate multiple GB on some setups.

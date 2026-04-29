@@ -7,7 +7,11 @@ from isaaclab.actuators import ActuatorNetMLPCfg, DCMotorCfg, ImplicitActuatorCf
 from isaaclab.assets.articulation import ArticulationCfg
 from isaaclab.utils.assets import ISAACLAB_NUCLEUS_DIR
 import os
+
+# Prefer explicit env var, but fall back to repo root so paths are portable.
 project_root = os.environ.get("PROJECT_ROOT")
+if not project_root:
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 G129_CFG_WITH_DEX3_BASE_FIX = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         usd_path=f"{project_root}/assets/robots/g1_29dof_with_dex3_base_fix.usd",
@@ -330,7 +334,14 @@ G129_CFG_WITH_DEX1_BASE_FIX = ArticulationCfg(
 
 G129_CFG_WITH_INSPIRE_HAND = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"/home/mxgu/Workspace/Omniverse/gmx/unitree/unitree_sim_isaaclab/unitree_sim_isaaclab_usds/assets/robots/g1-29dof-inspire-base-fix-usd/g1_29dof_with_inspire_rev_1_0.usd",
+        usd_path=os.path.join(
+            project_root,
+            "unitree_sim_isaaclab_usds",
+            "assets",
+            "robots",
+            "g1-29dof-inspire-base-fix-usd",
+            "g1_29dof_with_inspire_rev_1_0.usd",
+        ),
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -342,7 +353,8 @@ G129_CFG_WITH_INSPIRE_HAND = ArticulationCfg(
             max_depenetration_velocity=1.0,
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            enabled_self_collisions=False, 
+            # Self-collision for the whole articulation (PhysX articulation root).
+            enabled_self_collisions=False,
             solver_position_iteration_count=8,
             solver_velocity_iteration_count=4
         ),
