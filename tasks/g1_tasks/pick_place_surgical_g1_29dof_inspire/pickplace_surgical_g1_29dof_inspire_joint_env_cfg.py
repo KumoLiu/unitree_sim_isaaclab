@@ -39,12 +39,12 @@ class ObjectTableSceneCfg(SurgicalSceneCfg):
         init_pos=(-1.92, 2.5, 0.81168),
         init_rot=(0.0, 0.0, 0.0, 1.0),
         custom_joint_pos={
-            "left_shoulder_pitch_joint": -0.8,
-            "right_shoulder_pitch_joint": -0.8,
+            "left_shoulder_pitch_joint": -0.3,
+            "right_shoulder_pitch_joint": -0.3,
             "left_shoulder_roll_joint": 0.5,
             "right_shoulder_roll_joint": -0.5,
-            "left_elbow_joint": -0.3,
-            "right_elbow_joint": -0.3,
+            "left_elbow_joint": -0.5,
+            "right_elbow_joint": -0.5,
         },
     )
     # camera configuration (Inspire wrist cameras)
@@ -104,13 +104,14 @@ class EventCfg:
     """Reset all scene entities (robot, rigid objects, deformables) to their initial state."""
 
     reset_scene = EventTermCfg(func=base_mdp.reset_scene_to_default, mode="reset")
-    # Cloth_In001 is a rigid body embedded inside the cloth USD, not registered as
-    # a separate scene asset, so reset_scene_to_default does not touch it. Reset it
-    # explicitly back to its captured init pose (and zero velocity).
+
     reset_cloth_inner = EventTermCfg(
         func=reset_cloth_inner,
         mode="reset",
-        params={"cloth_asset_name": "cloth"},
+        params={
+            "cloth_asset_name": "cloth",
+            "inner_rel_path": "Cloth_In002/Cloth_In002",
+        },
     )
 
 
@@ -136,7 +137,7 @@ class PickPlaceG129InspireJointEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         ensure_sim_has_physx_cfg(self.sim)
         self.decimation = 4
-        self.episode_length_s = 60.0
+        self.episode_length_s = 120.0
         self.sim.dt = 1 / 120
         self.sim.render_interval = self.decimation 
         self.sim.physics.bounce_threshold_velocity = 0.01

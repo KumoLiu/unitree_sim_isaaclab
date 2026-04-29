@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import re
+import sys
 import torch
 from pxr import Gf, UsdGeom
 
 
-_CLOTH_IN_REL_PATH = "Cloth_In001/Cloth_In001"
+_DEFAULT_CLOTH_IN_REL_PATH = "Cloth_In001/Cloth_In001"
 # Attribute names of caches we stash on the env instance (one helper, many resets):
 _CACHE_INIT = "_cloth_inner_init"          # dict[env_id -> {pos_gf, rot_gf, pose7}]
 _CACHE_VIEW = "_cloth_inner_rigid_view"    # PhysX rigid body view (created once)
@@ -42,7 +43,7 @@ def _get_isaaclab_sim_view():
         return None
 
 
-def _try_physx_tensor_reset(env, env_ids, prim_path_expr):
+def _try_physx_tensor_reset(env, env_ids, prim_path_expr, inner_rel_path):
     """Reset the Cloth_In rigid bodies via the PhysX tensor (warp) API.
 
     Returns True on success, False so the caller can fall back to USD.
@@ -60,7 +61,7 @@ def _try_physx_tensor_reset(env, env_ids, prim_path_expr):
         # because the simulation hasn't started -- USD writes still propagate to PhysX.
         return False
 
-    glob = f"{_expr_to_glob(prim_path_expr)}/{_CLOTH_IN_REL_PATH}"
+    glob = f"{_expr_to_glob(prim_path_expr)}/{inner_rel_path}"
 
     # Cache the rigid body view so we don't pay the create cost on every reset
     rigid_view = getattr(env, _CACHE_VIEW, None)
@@ -129,8 +130,61 @@ def _usd_pose_reset(stage, prim_path, init_pos, init_rot):
     return True
 
 
-def reset_cloth_inner(env, env_ids, cloth_asset_name: str = "cloth"):
+def _autodetect_inner_rel_path(stage, prim_path_expr) -> str | None:
+    """Walk the env_0 cloth template and return the rel path of the first
+    descendant that carries ``PhysicsRigidBodyAPI``. This avoids hard-coding
+    ``Cloth_In001`` vs ``Cloth_In002`` etc. across different fold variants.
+
+    Logs the children it inspects so that when detection fails we can see
+    exactly what hierarchy the live stage exposes (often different from the
+    standalone-pxr view because of references / ``proto_asset_0`` wrappers).
+    """
+    base = prim_path_expr
+    if "{ENV_REGEX_NS}" in base:
+        base = base.replace("{ENV_REGEX_NS}", "/World/envs/env_0")
+    base = re.sub(r"env_\.\*", "env_0", base)
+    template = stage.GetPrimAtPath(base)
+    if not template or not template.IsValid():
+        print(f"[cloth_inner_reset] autodetect: template prim {base!r} is invalid")
+        return None
+
+    base_len = len(base.rstrip("/")) + 1
+    visited = []
+    # Use Usd.PrimRange so we traverse into instance proxies / references too,
+    # not just direct GetAllChildren which can stop at instance boundaries.
+    from pxr import Usd  # local import: pxr already pulled in at module load
+    for prim in Usd.PrimRange.AllPrims(template):
+        if prim == template:
+            continue
+        path_str = prim.GetPath().pathString
+        applied = list(prim.GetAppliedSchemas())
+        visited.append((path_str, applied))
+        if "PhysicsRigidBodyAPI" in applied:
+            rel = path_str[base_len:]
+            print(f"[cloth_inner_reset] autodetect: found rigid body at {path_str!r}, "
+                  f"rel={rel!r}")
+            return rel
+
+    print(f"[cloth_inner_reset] autodetect FAILED under {base!r}. "
+          f"Visited {len(visited)} prims, none had PhysicsRigidBodyAPI:")
+    for p, schemas in visited[:30]:
+        print(f"   - {p}  schemas={schemas}")
+    if len(visited) > 30:
+        print(f"   ... and {len(visited) - 30} more")
+    return None
+
+
+def reset_cloth_inner(env, env_ids, cloth_asset_name: str = "cloth", inner_rel_path: str | None = None):
     """Reset Cloth_In rigid body back to its initial pose.
+
+    Args:
+        cloth_asset_name: name of the cloth attribute on ``env.scene.cfg``.
+        inner_rel_path: relative path from the cloth spawn root to the inner
+            rigid body (e.g. ``"Cloth_In002/Cloth_In002"``). When ``None``
+            (default) the function walks the spawned cloth and picks the first
+            child prim with ``PhysicsRigidBodyAPI`` applied; if auto-detection
+            also fails, falls back to ``Cloth_In001/Cloth_In001`` for backward
+            compatibility with older fold04/05/06 USDs.
 
     NOTE: ``env_ids`` is intentionally a required positional (no default).
     IsaacLab's ``EventManager._resolve_common_term_cfg(min_argc=2)``
@@ -150,6 +204,18 @@ def reset_cloth_inner(env, env_ids, cloth_asset_name: str = "cloth"):
         return
     prim_path_expr = cloth_cfg.prim_path
 
+    # Resolve which sub-prim to reset. Cache the resolved value on env to avoid
+    # re-walking the USD on every reset.
+    if inner_rel_path is None:
+        inner_rel_path = getattr(env, "_cloth_inner_rel_path", None)
+        if inner_rel_path is None:
+            detected = _autodetect_inner_rel_path(stage, prim_path_expr)
+            inner_rel_path = detected or _DEFAULT_CLOTH_IN_REL_PATH
+            setattr(env, "_cloth_inner_rel_path", inner_rel_path)
+            print(f"[cloth_inner_reset] using inner_rel_path={inner_rel_path!r} "
+                  f"(autodetected={'yes' if detected else 'no, fallback to default'})")
+            sys.stdout.flush()
+
     if env_ids is None:
         env_ids = list(range(env.num_envs))
     elif isinstance(env_ids, torch.Tensor):
@@ -166,7 +232,7 @@ def reset_cloth_inner(env, env_ids, cloth_asset_name: str = "cloth"):
     inner_paths = []
     for env_id in env_ids:
         base = _resolve_env_prim_path(prim_path_expr, env_id)
-        path = f"{base}/{_CLOTH_IN_REL_PATH}"
+        path = f"{base}/{inner_rel_path}"
         prim = stage.GetPrimAtPath(path)
         if not prim.IsValid():
             print(f"[cloth_inner_reset] prim not found: {path}")
@@ -179,13 +245,16 @@ def reset_cloth_inner(env, env_ids, cloth_asset_name: str = "cloth"):
             init_dict[env_id] = {
                 "pos_gf": Gf.Vec3d(t),
                 "rot_gf": Gf.Quatd(q),
-                # IsaacLab tensor pose layout: [x,y,z, qw,qx,qy,qz]
+                # PhysX tensor layout for set_transforms: [x,y,z, qx,qy,qz,qw]
+                # (xyzw, NOT IsaacLab's external wxyz convention). IsaacLab
+                # itself does torch.roll(quat, -1) before calling set_transforms,
+                # so we just bake the xyzw order in here once.
                 "pose7": torch.tensor([
                     float(t[0]), float(t[1]), float(t[2]),
-                    float(q.GetReal()),
                     float(q.GetImaginary()[0]),
                     float(q.GetImaginary()[1]),
                     float(q.GetImaginary()[2]),
+                    float(q.GetReal()),
                 ], dtype=torch.float32),
             }
             print(f"[cloth_inner_reset] cached env {env_id} init pos: {t}")
@@ -197,7 +266,7 @@ def reset_cloth_inner(env, env_ids, cloth_asset_name: str = "cloth"):
         return
 
     # Path A: PhysX tensor view (works on GPU + suppressReadback=True).
-    if _try_physx_tensor_reset(env, valid_env_ids, prim_path_expr):
+    if _try_physx_tensor_reset(env, valid_env_ids, prim_path_expr, inner_rel_path):
         return
 
     # Path B: USD xform writes + flush.

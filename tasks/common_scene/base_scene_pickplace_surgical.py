@@ -21,85 +21,43 @@ class SurgicalSceneCfg(InteractiveSceneCfg): # inherit from the interactive scen
     defines a complete scene containing robot, object, table, etc.
     """
     #   # 1. room wall configuration - disable collisions to avoid GPU-cloth incompatibility
-    # scene = AssetBaseCfg(
-    #     prim_path="/World/envs/env_.*/Scene",
-    #     spawn=UsdFileCfg(
-    #         usd_path="/home/mxgu/Workspace/Omniverse/gmx/surgery-room-dev-internal/assets/Assets/scene04.usd",
-    #         # collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=False),
-    #     ),
-    #     init_state=AssetBaseCfg.InitialStateCfg(
-    #         pos=[0.0, 0.0, 0.0],
-    #         rot=[0.0, 0.0, 0.0, 1.0],
-    #     ),
-    # )
+    scene = AssetBaseCfg(
+        prim_path="/World/envs/env_.*/Scene",
+        spawn=UsdFileCfg(
+            usd_path="/home/mxgu/Workspace/Omniverse/gmx/surgery-room-dev-internal/assets/Assets/scene04.usd",
+            # collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=False),
+            scale=(1.0, 1.0, 1.1),
+        ),
+        init_state=AssetBaseCfg.InitialStateCfg(
+            pos=[0.0, 0.1, 0.0],
+            rot=[0.0, 0.0, 0.0, 1.0],
+        ),
+    )
 
-    # # Cloth (deformable object)
     cloth: DeformableObjectCfg = DeformableObjectCfg(
         prim_path="{ENV_REGEX_NS}/Cloth",
         spawn=UsdFileCfg(
-            usd_path="/home/mxgu/Workspace/Omniverse/gmx/surgery-room-dev-internal/assets/Assets/Assets/Cloth/Cloth_fold05/Cloth_fold06.usd",
-            scale=(0.7, 0.7, 0.9),
+            usd_path="/home/mxgu/Workspace/Omniverse/gmx/surgery-room-dev-internal/assets/Assets/Assets/Cloth/Cloth_fold06/Cloth_fold10.usd",
+            scale=(1.0, 1.0, 1.0),
             # deformable_props=DeformableBodyPropertiesCfg(
             #     disable_gravity=False,
             # ),
-            physics_material=SurfaceDeformableBodyMaterialCfg(
-                density=100.0,
-                youngs_modulus=5e5,
-                poissons_ratio=0.1,
-                surface_stretch_stiffness=1.0,
-                surface_shear_stiffness=5000,
-                surface_bend_stiffness=5,
-            ),
+            # physics_material=SurfaceDeformableBodyMaterialCfg(
+            #     density=100.0,
+            #     youngs_modulus=5e5,
+            #     poissons_ratio=0.1,
+            #     surface_stretch_stiffness=1.0,
+            #     surface_shear_stiffness=5000,
+            #     surface_bend_stiffness=5,
+            # ),
         ),
         init_state=DeformableObjectCfg.InitialStateCfg(
-            pos=(-1.56, 2.505, 0.97),
-            rot=(0.0, 0.0, 0.0, 1.0),
-        ),
-    )
-    # # Ground plane
-    # 3. ground configuration
-    ground = AssetBaseCfg(
-        prim_path="/World/GroundPlane",    # ground in the scene
-        spawn=GroundPlaneCfg( ),    # ground configuration
-    )
-
-    table = AssetBaseCfg(
-        prim_path="{ENV_REGEX_NS}/Table",
-        spawn=UsdFileCfg(
-            usd_path="/home/mxgu/Workspace/Omniverse/gmx/surgery-room-dev-internal/assets/Assets/Assets/Table256/Table256.usd",
-            scale=(0.8, 0.8, 1.1),
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(
-                solver_position_iteration_count=16,
-                solver_velocity_iteration_count=1,
-                linear_damping=0.05,
-                max_linear_velocity=1000.0,
-            ),
-            collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=False),
-        ),
-        init_state=AssetBaseCfg.InitialStateCfg(
-            pos=(-1.52, 2.455, 0.385*1.1),
-            rot=(0.0, 0.0, 0.70711, 0.70711),
-        ),
-    )
-
-    table_top_collider = AssetBaseCfg(
-        prim_path="{ENV_REGEX_NS}/TableTopCollider",
-        spawn=sim_utils.CuboidCfg(
-            size=(0.8, 0.52, 0.05),
-            collision_props=sim_utils.CollisionPropertiesCfg(collision_enabled=True),
-            visual_material=sim_utils.PreviewSurfaceCfg(
-                diffuse_color=(1.0, 1.0, 1.0),
-                opacity=1.0,
-            ),
-        ),
-        init_state=AssetBaseCfg.InitialStateCfg(
-            pos=(-1.49, 2.455, 0.835),
-            rot=(0.0, 0.0, 0.70711, 0.70711),
+            pos=(-1.60, 2.505, 0.90),
+            rot=(0.0, 0.0, 0.0, 1),
         ),
     )
 
     # Lights
-    # 4. light configuration
     light = AssetBaseCfg(
         prim_path="/World/light",   # light in the scene
         spawn=sim_utils.DomeLightCfg(color=(0.75, 0.75, 0.75), # light color (white)
